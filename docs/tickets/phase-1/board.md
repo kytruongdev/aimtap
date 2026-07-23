@@ -110,8 +110,8 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 | 009 | US-3.1 | 005, 008 |
 | 010 | US-3.2 | 009, 011 |
 | 017 | US-3.3 | 001, 002 |
-| 018 | US-3.4 | 016, 017 |
-| 019 | US-3.4 | 007, 009, 010, 018 |
+| 019 | US-3.4 | 007, 009 |
+| 018 | US-3.4 | 010, 016, 017, 019 |
 | 024 | US-4.1 | 007 |
 | 025 | US-4.1 | 024 |
 | 020 | US-4.2 | 001, 008 |
@@ -124,6 +124,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 ## Ghi chú
 
 - Không có phụ thuộc vòng ở cả cấp user story lẫn cấp ticket; phụ thuộc đi xuôi theo cột "Phụ thuộc" của `north-star.md` §2.
+- Theo ADR-013, Test Runner phản ứng qua hook (framework điều khiển vòng lặp). Trong US-3.4, TICKET-018 (cucumber-hooks: probe + bỏ qua theo cờ dừng + chuyển sự kiện bằng chứng) đọc/ghi trạng thái và cờ dừng do TICKET-019 (run-session) giữ, nên 018 phụ thuộc 019 (đảo so với bản trước). Cả hai cùng US-3.4/một PR nên thứ tự nội bộ này không đổi phụ thuộc cấp user story.
 - US-4.3 phụ thuộc US-4.1 vì cuối một lượt chạy `run` tự sinh báo cáo (UC-06 bước 7, sequence-diagram §3). Muốn ship `run` trước Reporter thì tách phần tự sinh báo cáo thành bước tùy chọn và bỏ phụ thuộc này — một đánh đổi, hỏi product owner trước khi làm.
 - US-5.2 (thí điểm) khai báo phụ thuộc kỹ thuật US-1.3/2.1/3.3 để viết được nội dung; để **chạy** đầu-cuối cần luồng `run` ở US-4.3 nên xếp cuối.
 

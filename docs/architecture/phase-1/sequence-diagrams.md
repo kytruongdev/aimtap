@@ -13,6 +13,7 @@ sequenceDiagram
     participant Cfg as Config & Secrets
     participant Reg as App Registry
     participant Dev as Device & Build Manager
+    participant WDIO as WDIO/Cucumber
     participant Runner as Test Runner
     participant Store as Result Store
 
@@ -24,12 +25,14 @@ sequenceDiagram
     CLI->>Dev: ensureReadyBeforeRun(AppConfig)
     Dev-->>CLI: DeviceContext (hoặc PlatformFailure: thiết bị/build)
     CLI->>Dev: installBuild()
-    CLI->>Runner: startRun(scope, DeviceContext)
+    CLI->>WDIO: khởi chạy testrunner (scope → bộ lọc Cucumber, DeviceContext)
+    WDIO->>Runner: before (đầu phiên worker)
+    Runner->>Runner: sinh run-id
     Runner->>Store: saveRunStart(run)
-    Runner-->>CLI: run-id, tiến trình
+    Runner-->>CLI: run-id + luồng sự kiện tiến trình
 ```
 
-Điểm thất bại: bất kỳ kiểm tra tiền điều kiện nào không thỏa (khai báo, dữ liệu kiểm thử thiếu, bản build, thiết bị) làm lượt chạy **không mở**, không sinh bản ghi, không sinh báo cáo; lý do nêu theo từng mục (BR-015, FR-APP-04, UC-06 E1). Tập chạy rỗng cũng không mở lượt chạy (UC-06 E2).
+Điểm thất bại: bất kỳ kiểm tra tiền điều kiện nào không thỏa (khai báo, dữ liệu kiểm thử thiếu, bản build, thiết bị) làm lượt chạy **không mở**, không sinh bản ghi, không sinh báo cáo; lý do nêu theo từng mục (BR-015, FR-APP-04, UC-06 E1). Tập chạy rỗng cũng không mở lượt chạy (UC-06 E2). Tiền điều kiện chạy trong tiến trình CLI trước khi khởi chạy testrunner; `run-id` sinh trong hook `before` ở tiến trình worker và về CLI qua luồng sự kiện, không phải giá trị trả đồng bộ (ADR-013).
 
 ---
 
@@ -37,6 +40,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
+    participant WDIO as WDIO/Cucumber
     participant Runner as Test Runner
     participant Dev as Device & Build Manager
     participant Steps as Step Definition
@@ -46,10 +50,10 @@ sequenceDiagram
     participant Ev as Evidence Collector
     participant Store as Result Store
 
+    WDIO->>Runner: beforeScenario (mỗi test case)
     Runner->>Dev: probeDuringRun(session)
     Dev-->>Runner: ready
-    Runner->>Steps: chạy test case kế tiếp
-    loop mỗi bước
+    loop mỗi bước trong test case
         Steps->>PO: hành vi nghiệp vụ
         PO->>Res: find(locator, screenName)
         Res->>Runner: setCurrentScreen(screenName)
@@ -61,11 +65,12 @@ sequenceDiagram
             Ev->>Ev: phân loại lỗi (BR-014), đọc màn hình hiện tại
         end
     end
-    Steps->>Ev: onScenarioEnd(test case)
+    WDIO->>Runner: afterScenario
+    Runner->>Ev: onScenarioEnd(test case)
     Ev->>Store: saveTestCaseResult(result, steps) [giao dịch]
 ```
 
-Điểm thất bại: bước hỏng ⇒ test case `failed`, không chạy các bước còn lại, nhưng lượt chạy tiếp tục (BR-002). Lỗi khi chụp ảnh/ghi nhật ký được bắt trong Evidence Collector, đánh dấu `evidence_missing`, không đổi trạng thái test case (BR-004). Mất phiên giữa test case ⇒ `failed` loại `step_not_executed`; việc dừng lượt chạy do probe ở lần kiểm tra kế tiếp quyết định (UC-07 E2, BR-018).
+Điểm thất bại: bước hỏng ⇒ test case `failed`, không chạy các bước còn lại, nhưng lượt chạy tiếp tục (BR-002). Lỗi khi chụp ảnh/ghi nhật ký được bắt trong Evidence Collector, đánh dấu `evidence_missing`, không đổi trạng thái test case (BR-004). Mất phiên giữa test case ⇒ `failed` loại `step_not_executed`; việc dừng lượt chạy do probe ở lần kiểm tra kế tiếp quyết định (UC-07 E2, BR-018). WDIO/Cucumber điều khiển việc lặp qua test case và gọi các hook; nền tảng không tự lặp (ADR-013).
 
 ---
 
@@ -73,18 +78,26 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
+    participant WDIO as WDIO/Cucumber
     participant Runner as Test Runner
     participant Dev as Device & Build Manager
     participant Store as Result Store
     participant Reporter
 
+    WDIO->>Runner: beforeScenario
     Runner->>Dev: probeDuringRun(session)
     Dev-->>Runner: unavailable
+    Runner->>Runner: bật cờ dừng (device_unavailable)
+    loop mỗi test case còn lại
+        WDIO->>Runner: beforeScenario
+        Runner->>WDIO: bỏ qua (cờ dừng bật) — không sinh bản ghi
+    end
+    WDIO->>Runner: after (kết thúc phiên)
     Runner->>Store: finalizeRun(incomplete, device_unavailable, not_run_count)
     Runner->>Reporter: sinh báo cáo lượt chạy chưa hoàn tất
 ```
 
-Điểm thất bại: các test case chưa chạy **không** sinh bản ghi; số lượng ghi ở cấp lượt chạy (BR-012). Dữ liệu của các test case đã hoàn tất giữ nguyên vì mỗi test case đã ghi theo giao dịch ngay khi kết thúc (ADR-003). Lượt chạy chưa hoàn tất **vẫn** sinh báo cáo (FR-REP-01). Hủy bởi QC đi cùng luồng này với `stop_reason = cancelled_by_qc` (UC-06 E3).
+Điểm thất bại: các test case chưa chạy **không** sinh bản ghi; số lượng ghi ở cấp lượt chạy (BR-012). Dữ liệu của các test case đã hoàn tất giữ nguyên vì mỗi test case đã ghi theo giao dịch ngay khi kết thúc (ADR-003). Lượt chạy chưa hoàn tất **vẫn** sinh báo cáo (FR-REP-01). Hủy bởi QC bật cờ dừng với `stop_reason = cancelled_by_qc` qua tín hiệu ngắt (SIGINT), rồi đi cùng luồng bỏ qua và `finalizeRun` này (UC-06 E3, ADR-013).
 
 ---
 
