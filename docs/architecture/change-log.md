@@ -6,13 +6,7 @@ Ghi lại thay đổi đối với tài liệu đã được phê duyệt. Thay 
 |---|---|---|---|
 | 2026-07-22 | Phê duyệt bộ tài liệu Giai đoạn 0: kiến trúc tổng thể, quy ước viết mã, và tám quyết định kiến trúc nền tảng. Mốc bắt đầu áp dụng quản lý thay đổi. | `north-star.md`, `coding-convention.md`, `adr/adr-001.md` → `adr/adr-008.md` | — |
 | 2026-07-22 | Đồng bộ với định nghĩa "bằng chứng thực thi" ba phần ở `brd.md` §1: trách nhiệm Evidence Collector và nguyên tắc thu thập bằng chứng phát biểu theo cùng ba phần đó. Gắn AS-05 làm căn cứ cho NFR-10 và cho ngưỡng chuyển sang chụp ảnh ở mọi bước. | `north-star.md` §2, §2.2, §5, §6 | Không. Trách nhiệm module và hợp đồng dữ liệu không đổi; chỉ thống nhất cách phát biểu và bổ sung truy vết. |
-
----
-
-## Quy ước
-
-- Mỗi thay đổi ghi một dòng: ngày, nội dung sửa, tài liệu bị ảnh hưởng, và việc Team Lead có cần đánh giá lại các ticket đang mở hay không.
-- Nội dung tài liệu luôn phản ánh trạng thái hiện tại. Change log giữ dấu vết thay đổi; thân tài liệu không chứa lịch sử.
-- Thay đổi đảo ngược một quyết định đã `Accepted` và đã được nơi khác dựa vào thì tạo ADR mới trỏ tới ADR cũ, đánh dấu ADR cũ là `Superseded`, và ghi một dòng ở đây. Thay đổi không chạm quyết định nào (sửa cấu trúc thư mục, bổ sung quy ước viết mã, cập nhật diagram) chỉ ghi ở đây.
-- Cột cuối đánh dấu `Có` khi thay đổi chạm tới thứ Team Lead đang dựa vào để chẻ ticket: ranh giới module, bề mặt công khai `src/index.ts`, hợp đồng dữ liệu kết quả, hoặc quy ước viết mã.
-- Khi một quyết định nghiệp vụ thay đổi, đối chiếu cả tài liệu kiến trúc lẫn bốn tài liệu nghiệp vụ (`brd.md`, `epic-map.md`, `phase-proposal.md`, `requirement.md`) trước khi đóng mục.
+| 2026-07-23 | Chốt ADR-009 (Accepted): lưu dữ liệu kiểm thử và bí mật ngoài kho mã bằng tệp có cấu trúc theo từng ứng dụng, một tệp cho mỗi ứng dụng (`apps/<app-id>/test-data.{example,local}.json`). | `adr/adr-009.md` | Là đầu vào khi chẻ ticket khai báo ứng dụng và Config & Secrets. |
+| 2026-07-23 | Chốt ADR-010 (Accepted): kiểm tra thiết bị giữa các test case bằng probe nhẹ trên phiên Appium đang mở, không kiểm tra lại ở tầng hệ điều hành mỗi test case. Phép kiểm tra đầy đủ FR-DEV-02 giữ nguyên ở bước mở lượt chạy. | `adr/adr-010.md` | Là đầu vào khi chẻ ticket Test Runner và Device & Build Manager. |
+| 2026-07-23 | Đồng bộ từ vựng trung tâm mới ("kịch bản" → test case; "bộ kịch bản" → test suite; bổ sung tầng test feature; "Reviewer kịch bản" → Reviewer) và hợp đồng dữ liệu (thêm tên test feature và thông báo lỗi gốc; loại lỗi hai giá trị theo BR-014; test case không chạy không sinh bản ghi) vào toàn bộ tài liệu Giai đoạn 0. Hấp thụ cấu trúc ADR-009 vào `north-star.md` §2.1 và `coding-convention.md`; chỉ mục ADR-009/ADR-010 vào `north-star.md` §3; thêm NFR-12 vào §5. | `north-star.md`, `coding-convention.md`, `adr/adr-001.md` → `adr/adr-008.md` | Có. Hợp đồng dữ liệu kết quả và quy ước viết mã đổi cách gọi tên và bổ sung trường; dùng bản mới khi chẻ ticket Phase 1. |
+| 2026-07-23 | Hoàn tất thiết kế chi tiết Phase 1: `component-design.md`, `erd.md`, `interface-spec.md`, `sequence-diagrams.md`. Chốt ADR-011 (tên màn hình lấy từ Page Object) và ADR-012 (Puppeteer kèm Chromium đóng gói) là quyết định kỹ thuật của SA. Product owner xác nhận phạm vi Phase 1 ở mức nghiệp vụ; ADR-012 giữ phương án tải Chromium đóng gói. | `phase-1/*.md`, `adr/adr-011.md`, `adr/adr-012.md` | Có. Đây là bộ thiết kế Team Lead tiếp nhận để chẻ ticket Phase 1. |
