@@ -68,23 +68,23 @@ Diagram này được cập nhật mỗi khi một quyết định kiến trúc 
 
 | Module | Trách nhiệm (một câu) | Lưu/đọc dữ liệu | Phụ thuộc | Phase |
 |---|---|---|---|---|
-| CLI Entry | Nhận lệnh của QC (chọn ứng dụng, bộ kịch bản, thiết bị), khởi động một lượt chạy và hiển thị tiến trình. | đọc App Registry | Config, Device & Build Manager, Test Runner | 1 |
+| CLI Entry | Nhận lệnh của QC (chọn ứng dụng, test suite, thiết bị), khởi động một lượt chạy và hiển thị tiến trình. | đọc App Registry | Config, Device & Build Manager, Test Runner | 1 |
 | App Registry | Giữ khai báo của từng ứng dụng được kiểm thử (định danh, đường dẫn build, thiết bị và phiên bản hệ điều hành đích) dưới dạng dữ liệu khai báo ngoài mã nền tảng. | đọc tệp cấu hình ứng dụng | Shared | 1 |
 | Device & Build Manager | Chuẩn bị thiết bị thật hoặc simulator và cài bản build lên thiết bị trước lượt chạy. | — | Appium, công cụ dòng lệnh của Xcode | 1 |
-| Test Runner | Thực thi các kịch bản được chọn, quản lý vòng đời phiên Appium, phát sự kiện bắt đầu/kết thúc từng kịch bản và từng bước. | — | WebdriverIO, Cucumber, Appium, Evidence Collector | 1 |
+| Test Runner | Thực thi các test case được chọn, quản lý vòng đời phiên Appium, phát sự kiện bắt đầu/kết thúc từng test case và từng bước. | — | WebdriverIO, Cucumber, Appium, Evidence Collector | 1 |
 | Locator Resolver | Điểm duy nhất mà mọi Page Object đi qua để tìm một phần tử trên màn hình. | đọc locator từ Page Object | Test Runner (phiên Appium) | 1 |
-| Evidence Collector | Dựng bằng chứng thực thi của mỗi kịch bản: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng. | ghi tệp ảnh, đẩy bản ghi sang Result Store | Result Store | 1 |
-| Result Store | Lưu bản ghi kết quả có cấu trúc của mỗi lượt chạy và mỗi kịch bản trên máy QC. | ghi/đọc SQLite cục bộ | Shared | 1 |
+| Evidence Collector | Dựng bằng chứng thực thi của mỗi test case: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng. | ghi tệp ảnh, đẩy bản ghi sang Result Store | Result Store | 1 |
+| Result Store | Lưu bản ghi kết quả có cấu trúc của mỗi lượt chạy và mỗi test case trên máy QC. | ghi/đọc SQLite cục bộ | Shared | 1 |
 | Reporter | Sinh báo cáo của một lượt chạy ở định dạng đính được vào Jira. | đọc Result Store và tệp ảnh | Result Store | 1 |
-| Config & Secrets | Cung cấp cấu hình vận hành của nền tảng và nạp khóa API từ nguồn ngoài kho mã. | đọc biến môi trường, tệp cấu hình cục bộ | Shared | 1 |
+| Config & Secrets | Cung cấp cấu hình vận hành của nền tảng, nạp khóa API và dữ liệu kiểm thử từ nguồn ngoài kho mã. | đọc biến môi trường, tệp cấu hình cục bộ | Shared | 1 |
 | Shared | Cung cấp hạ tầng dùng chung cho mọi module: ghi log có cấu trúc, phân cấp lớp lỗi, kiểu dữ liệu chung. | — | — | 1 |
 | Claude Client | Điểm duy nhất của nền tảng gọi Claude API: quản lý khóa, chọn mô hình, giới hạn số lần gọi, và tắt hoàn toàn bằng cấu hình. | đọc Config & Secrets | Config & Secrets | 2 |
 | Script Generator | Sinh phần mô tả hành vi và phần cài đặt còn thiếu từ mô tả của QC và page source của màn hình đích, dựa trên danh sách step definition hiện có. | đọc step definition hiện có, ghi tệp nháp | Claude Client | 2 |
 | Analytics | Trả lời câu hỏi về xu hướng chất lượng từ dữ liệu kết quả đã tích lũy. | đọc Result Store | Result Store | 3 |
 
-Một kịch bản gồm hai phần: **mô tả hành vi** bằng ngôn ngữ tự nhiên (tệp `.feature`) và **cài đặt thực thi** từng câu mô tả (step definition). Cả hai phần, cùng khai báo ứng dụng và Page Object, nằm trong cùng kho mã nhưng ngoài ranh giới nền tảng. Nền tảng không tham chiếu tới bất kỳ định danh, màn hình, hay luồng nghiệp vụ nào của một ứng dụng cụ thể; quan hệ đi một chiều từ nội dung ứng dụng tới nền tảng.
+Nội dung test của một ứng dụng gồm hai phần: **mô tả hành vi** bằng ngôn ngữ tự nhiên (tệp `.feature`, mỗi tệp là một **test feature** chứa nhiều **test case**) và **cài đặt thực thi** từng câu mô tả (step definition). Cả hai phần, cùng khai báo ứng dụng và Page Object, nằm trong cùng kho mã nhưng ngoài ranh giới nền tảng. Nền tảng không tham chiếu tới bất kỳ định danh, màn hình, hay luồng nghiệp vụ nào của một ứng dụng cụ thể; quan hệ đi một chiều từ nội dung ứng dụng tới nền tảng.
 
-Việc đưa ứng dụng về trạng thái nghiệp vụ mà một kịch bản cần thuộc về chính kịch bản đó, không thuộc nền tảng. Device & Build Manager chỉ chịu trách nhiệm tới mức ứng dụng được cài và sẵn sàng khởi chạy trên thiết bị.
+Việc đưa ứng dụng về trạng thái nghiệp vụ mà một test case cần thuộc về chính test case đó, không thuộc nền tảng. Device & Build Manager chỉ chịu trách nhiệm tới mức ứng dụng được cài và sẵn sàng khởi chạy trên thiết bị.
 
 ### 2.1. Cấu trúc kho mã
 
@@ -128,7 +128,7 @@ aimtap/
 │   │   └── index.ts
 │   │
 │   ├── evidence/                         # Evidence Collector
-│   │   ├── evidence-collector.ts         # nhận sự kiện bước/kịch bản, dựng bản ghi kết quả
+│   │   ├── evidence-collector.ts         # nhận sự kiện bước/test case, dựng bản ghi kết quả
 │   │   ├── execution-log.ts              # nhật ký thực thi: các bước theo thứ tự, kết quả, lỗi tại bước hỏng
 │   │   ├── screenshot-writer.ts          # chụp và ghi ảnh tại bước hỏng, ngoài đường chờ của bước
 │   │   ├── failure-classifier.ts         # phân loại lỗi ứng dụng và lỗi nền tảng
@@ -138,7 +138,7 @@ aimtap/
 │   │   ├── database.ts                   # mở kết nối SQLite, bật WAL, chuẩn bị câu lệnh
 │   │   ├── migrations/                   # nâng cấp schema theo phiên bản, chạy lúc khởi động
 │   │   │   └── 001-initial.ts
-│   │   ├── run-repository.ts             # ghi và đọc lượt chạy, kết quả kịch bản, bước
+│   │   ├── run-repository.ts             # ghi và đọc lượt chạy, kết quả test case, bước
 │   │   ├── models.ts                     # kiểu của bản ghi kết quả — hợp đồng dữ liệu của Phase 3
 │   │   └── index.ts
 │   │
@@ -151,7 +151,7 @@ aimtap/
 │   ├── config/                           # Config & Secrets
 │   │   ├── env.schema.ts                 # schema Zod cho biến môi trường
 │   │   ├── platform-config.ts            # cấu hình vận hành: thời gian chờ, thư mục output, công tắc AI
-│   │   ├── secrets.ts                    # nạp khóa API, che khóa khi ghi log
+│   │   ├── secrets.ts                    # nạp khóa API và dữ liệu kiểm thử, che bí mật khi ghi log
 │   │   └── index.ts
 │   │
 │   ├── shared/                           # Shared
@@ -170,7 +170,7 @@ aimtap/
 │   │
 │   ├── analytics/                                                   # [Phase 3]
 │   │   ├── trend-queries.ts              # tỷ lệ vượt qua theo thời gian, màn hình hay hỏng
-│   │   ├── flakiness.ts                  # phát hiện kịch bản thiếu ổn định
+│   │   ├── flakiness.ts                  # phát hiện test case thiếu ổn định
 │   │   └── index.ts
 │   │
 │   └── index.ts                          # điểm vào công khai — thứ duy nhất apps/ được import
@@ -179,13 +179,15 @@ aimtap/
 │   └── <app-id>/
 │       ├── app.config.ts                 # định danh, đường dẫn build, thiết bị và phiên bản OS đích
 │       ├── features/
-│       │   └── login.feature             # mô tả hành vi — thứ QC và Reviewer đọc
+│       │   └── login.feature             # mô tả hành vi — một test feature, thứ QC và Reviewer đọc
 │       ├── steps/
 │       │   └── login.steps.ts            # cài đặt thực thi — nơi duy nhất gọi Page Object
 │       ├── screens/
 │       │   └── login.screen.ts           # Page Object của một màn hình
-│       └── fixtures/
-│           └── users.ts                  # dữ liệu thử nghiệm
+│       ├── fixtures/
+│       │   └── users.ts                  # tham chiếu dữ liệu kiểm thử theo tên, không chứa giá trị (ADR-009)
+│       ├── test-data.example.json        # khuôn: danh sách mục dữ liệu kiểm thử cần điền, không giá trị thật
+│       └── test-data.local.json          # giá trị QC điền — không theo dõi bởi Git
 │
 ├── config/                               # cấu hình WebdriverIO
 │   ├── wdio.shared.conf.ts               # phần dùng chung: service của nền tảng, cucumberOpts, thời gian chờ
@@ -221,38 +223,38 @@ Ba quy tắc cưỡng chế ranh giới, kiểm tra tự động bằng `eslint-
 
 Trong `apps/<app-id>/`, luồng phụ thuộc đi một chiều: `features/` → `steps/` → `screens/`. Tệp `.feature` không chứa mã; `screens/` không tham chiếu ngược lên `steps/`.
 
-Thêm một ứng dụng vào nền tảng là thêm một thư mục dưới `apps/`, không sửa gì trong `src/` (NFR-07, EP-24, EP-25). Mỗi ứng dụng có thư mục dữ liệu kết quả riêng dưới `output/` (EP-25).
+Thêm một ứng dụng vào nền tảng là thêm một thư mục dưới `apps/`, không sửa gì trong `src/` (NFR-07, EP-24, EP-25). Mỗi ứng dụng có thư mục dữ liệu kết quả riêng dưới `output/` (EP-25), và một tệp `test-data.local.json` riêng chứa giá trị dữ liệu kiểm thử, không theo dõi bởi Git (ADR-009).
 
 ### 2.2. Nguyên tắc thiết kế bên trong module
 
 Các nguyên tắc dưới đây áp dụng cho mọi module; lập luận và nguồn tham chiếu ở [ADR-008](adr/adr-008.md).
 
 **Phát hiện sai sót sớm**
-- Mọi dữ liệu vào nền tảng từ bên ngoài (khai báo ứng dụng, biến môi trường, phản hồi của Claude) đi qua một schema kiểm tra tại thời điểm chạy trước khi được dùng. Schema là nguồn duy nhất sinh ra cả kiểu dữ liệu lẫn phép kiểm tra.
-- Điều kiện môi trường (Node, Xcode, Appium, thiết bị khả dụng, bản build tồn tại) được kiểm tra trước khi mở phiên Appium. Lượt chạy dừng ở bước này kèm thông báo nêu rõ thiếu gì, thay vì hỏng ở giữa.
+- Mọi dữ liệu vào nền tảng từ bên ngoài (khai báo ứng dụng, biến môi trường, dữ liệu kiểm thử, phản hồi của Claude) đi qua một schema kiểm tra tại thời điểm chạy trước khi được dùng. Schema là nguồn duy nhất sinh ra cả kiểu dữ liệu lẫn phép kiểm tra.
+- Điều kiện môi trường (Node, Xcode, Appium, thiết bị khả dụng, bản build tồn tại) được kiểm tra trước khi mở phiên Appium. Mọi mục dữ liệu kiểm thử trong tệp mẫu được kiểm tra đã có giá trị ở cùng bước này (ADR-009). Lượt chạy dừng ở bước này kèm thông báo nêu rõ thiếu gì, thay vì hỏng ở giữa.
 - Câu mô tả hành vi chưa có step definition tương ứng làm lượt chạy dừng kèm danh sách câu thiếu, không bị bỏ qua im lặng.
 
 **Hai nhánh lỗi tách biệt**
-- `AppFailure` là lỗi của ứng dụng được kiểm thử: kịch bản hỏng, đây là kết quả hợp lệ và được ghi vào bản ghi kết quả.
-- `PlatformFailure` là lỗi của nền tảng hoặc môi trường: thiết bị không sẵn sàng, cài build thất bại, cấu hình sai, step definition thiếu. Loại này không được ghi thành "kịch bản hỏng" vì làm sai lệch số liệu chất lượng (SM-03).
+- `AppFailure` là lỗi của ứng dụng được kiểm thử: test case hỏng, đây là kết quả hợp lệ và được ghi vào bản ghi kết quả.
+- `PlatformFailure` là lỗi của nền tảng hoặc môi trường: thiết bị không sẵn sàng, cài build thất bại, cấu hình sai, step definition thiếu. Loại này không được ghi thành "test case hỏng" vì làm sai lệch số liệu chất lượng (SM-03).
 
 **Bằng chứng thực thi là thứ phụ trợ**
-- Bằng chứng thực thi của một kịch bản gồm ba phần: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng.
-- Nhật ký thực thi được dựng cho mọi kịch bản. Ảnh chụp chỉ được tạo tại bước hỏng của một kịch bản hỏng, và tại các bước được đánh dấu tường minh là cần chụp; kịch bản đạt không sinh ảnh.
-- Lỗi phát sinh khi chụp ảnh hoặc ghi nhật ký không làm thay đổi trạng thái của kịch bản; kịch bản tiếp tục chạy và phần bằng chứng thiếu được ghi nhận là thiếu.
+- Bằng chứng thực thi của một test case gồm ba phần: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng.
+- Nhật ký thực thi được dựng cho mọi test case. Ảnh chụp chỉ được tạo tại bước hỏng của một test case hỏng, và tại các bước được đánh dấu tường minh là cần chụp; test case đạt không sinh ảnh.
+- Lỗi phát sinh khi chụp ảnh hoặc ghi nhật ký không làm thay đổi trạng thái của test case; test case tiếp tục chạy và phần bằng chứng thiếu được ghi nhận là thiếu.
 
 **Độ ổn định của lượt chạy**
 - Không dùng thời gian chờ cố định. Mọi lần chờ là chờ có điều kiện với thời gian chờ tối đa, đặt tập trung ở `wait-policy.ts` thay vì rải trong Page Object.
 - Không gọi các lệnh giao thức cấp thấp của WebDriver; dùng lệnh cấp cao của WebdriverIO để giữ được cơ chế chờ và thử lại sẵn có.
-- Một kịch bản hỏng không làm dừng lượt chạy; các kịch bản còn lại vẫn chạy và kết quả vẫn được ghi.
-- Mỗi kịch bản tự đưa ứng dụng về trạng thái nó cần ở bước mở đầu, không giả định trạng thái do kịch bản khác hay lượt chạy trước để lại. Kết quả của một kịch bản do đó không phụ thuộc vào thứ tự chạy.
-- Bản ghi của một kịch bản được ghi ngay khi kịch bản kết thúc, không giữ trong bộ nhớ tới cuối lượt chạy; một lượt chạy bị ngắt giữa chừng vẫn để lại dữ liệu của các kịch bản đã hoàn tất.
+- Một test case hỏng không làm dừng lượt chạy; các test case còn lại vẫn chạy và kết quả vẫn được ghi. Lượt chạy chỉ dừng giữa chừng khi QC hủy hoặc khi thiết bị không còn sẵn sàng, kiểm tra bằng probe nhẹ trên phiên trước mỗi test case (ADR-010).
+- Mỗi test case tự đưa ứng dụng về trạng thái nó cần ở bước mở đầu, không giả định trạng thái do test case khác hay lượt chạy trước để lại. Kết quả của một test case do đó không phụ thuộc vào thứ tự chạy.
+- Bản ghi của một test case được ghi ngay khi test case kết thúc, không giữ trong bộ nhớ tới cuối lượt chạy; một lượt chạy bị ngắt giữa chừng vẫn để lại dữ liệu của các test case đã hoàn tất.
 
 **Hiệu suất của lượt chạy**
 - Thao tác nhập/xuất nặng (ghi tệp ảnh, ghi cơ sở dữ liệu) không nằm trên đường chờ của bước kế tiếp.
 - Việc thu thập bằng chứng không kéo dài đáng kể một lượt chạy: nhật ký thực thi là thao tác trong bộ nhớ, và ảnh chụp chỉ phát sinh ở bước hỏng.
 - Kết nối cơ sở dữ liệu bật chế độ ghi WAL và dùng câu lệnh đã chuẩn bị sẵn; ghi kết quả của một lượt chạy theo giao dịch.
-- Phiên Appium được mở một lần cho mỗi lượt chạy và dùng lại giữa các kịch bản; việc đưa ứng dụng về trạng thái cần thiết thực hiện bằng thao tác trong kịch bản, không bằng cách mở lại phiên.
+- Phiên Appium được mở một lần cho mỗi lượt chạy và dùng lại giữa các test case; việc đưa ứng dụng về trạng thái cần thiết thực hiện bằng thao tác trong test case, không bằng cách mở lại phiên.
 
 **Khả năng kiểm thử của chính nền tảng**
 - Logic không cần thiết bị (phân loại lỗi, dựng nhật ký thực thi, dựng mô hình báo cáo, truy vấn kết quả, kiểm tra schema) tách khỏi phần gọi Appium, để kiểm thử đơn vị chạy được mà không cần máy thật.
@@ -288,8 +290,10 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Điểm đặt lớp self-healing. | [ADR-004](adr/adr-004.md) |
 | Cách tích hợp Claude API qua một client dùng chung. | [ADR-005](adr/adr-005.md) |
 | Cách sinh báo cáo PNG/PDF. | [ADR-006](adr/adr-006.md) |
-| Cấu trúc kịch bản và nguồn của biểu diễn bằng ngôn ngữ tự nhiên. | [ADR-007](adr/adr-007.md) |
+| Cấu trúc test case và nguồn của biểu diễn bằng ngôn ngữ tự nhiên. | [ADR-007](adr/adr-007.md) |
 | Thư viện nền, công cụ chạy, và cách đồng bộ môi trường máy QC. | [ADR-008](adr/adr-008.md) |
+| Lưu dữ liệu kiểm thử và bí mật ngoài kho mã theo từng ứng dụng. | [ADR-009](adr/adr-009.md) |
+| Kiểm tra thiết bị sẵn sàng giữa lượt chạy. | [ADR-010](adr/adr-010.md) |
 
 ---
 
@@ -316,21 +320,22 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 
 ## 5. Chiến lược NFR (mức cao)
 
-Mã NFR-01 đến NFR-09 theo `brd.md` §9. NFR-10 và NFR-11 chỉ có ở `requirement.md` §5.
+Mã NFR-01 đến NFR-09 theo `brd.md` §9. NFR-10 đến NFR-12 chỉ có ở `requirement.md` §5 và `srs.md` Phase 1.
 
 | NFR | Cách tiếp cận | Đối chiếu ràng buộc |
 |---|---|---|
 | NFR-01 — chạy nội bộ, không máy chủ | Toàn bộ nền tảng là một dự án Node.js chạy bằng dòng lệnh trên máy QC. Không có tiến trình thường trú, không có cổng mạng mở ngoài Appium server cục bộ, không container hóa. | BC-02. |
 | NFR-02 — iOS trên macOS | Ràng buộc của XCUITest driver. `environment-check.ts` kiểm tra điều kiện môi trường ở bước khởi động lượt chạy và dừng sớm kèm thông báo nếu thiếu. | BC-01. Cũng là lý do nền tảng không chạy trong container (§2.3). |
-| NFR-03 — kết quả lặp lại, không phụ thuộc thứ tự chạy | Mỗi kịch bản tự đưa ứng dụng về trạng thái nó cần ở bước mở đầu. Mỗi bản ghi lượt chạy lưu định danh bản build và định danh thiết bị để đối chiếu về sau. Phân tách `AppFailure` và `PlatformFailure` giữ cho SM-03 không bị lẫn lỗi môi trường. Phiên bản Node và thư viện cố định giữa các máy QC (§2.3). | BC-03, BC-06. Tính lặp lại phụ thuộc vào việc trạng thái ứng dụng đặt lại được bằng thao tác trong kịch bản. |
+| NFR-03 — kết quả lặp lại, không phụ thuộc thứ tự chạy | Mỗi test case tự đưa ứng dụng về trạng thái nó cần ở bước mở đầu. Mỗi bản ghi lượt chạy lưu định danh bản build và định danh thiết bị để đối chiếu về sau. Phân tách `AppFailure` và `PlatformFailure` giữ cho SM-03 không bị lẫn lỗi môi trường. Phiên bản Node và thư viện cố định giữa các máy QC (§2.3). | BC-03, BC-06. Tính lặp lại phụ thuộc vào việc trạng thái ứng dụng đặt lại được bằng thao tác trong test case. |
 | NFR-04 — khóa API ngoài kho mã | Khóa nạp qua biến môi trường từ `.env.local` không được Git theo dõi. Giá trị bí mật bị che ở tầng ghi log, nên không lọt vào log, bản ghi kết quả, hay báo cáo. | Không dùng dịch vụ quản lý bí mật; ràng buộc chạy cục bộ không đòi hỏi mức đó. |
 | NFR-05 — kiểm soát độ trễ và chi phí Claude | Mọi lệnh gọi đi qua Claude Client, nơi đặt công tắc bật/tắt toàn cục, hạn mức số lần gọi trên một lượt chạy, và thời gian chờ tối đa cho mỗi lần gọi. Khi tắt, nền tảng chạy đúng như Phase 1. | BC-04. |
-| NFR-06 — quyền kết luận thuộc con người | Nền tảng không tự thay đổi phần mô tả hành vi, step definition hay Page Object trên nhánh chính. Đầu ra của Claude luôn là đề xuất ở dạng tệp nháp hoặc mục cảnh báo trong báo cáo. Kịch bản có tự phục hồi mang trạng thái riêng, không gộp vào "đạt". | BC-08. |
+| NFR-06 — quyền kết luận thuộc con người | Nền tảng không tự thay đổi phần mô tả hành vi, step definition hay Page Object trên nhánh chính. Đầu ra của Claude luôn là đề xuất ở dạng tệp nháp hoặc mục cảnh báo trong báo cáo. Test case có tự phục hồi mang trạng thái riêng, không gộp vào "đạt". | BC-08. |
 | NFR-07 — nền tảng không chứa tri thức ứng dụng | Quy tắc phụ thuộc một chiều giữa `src/` và `apps/`, cưỡng chế bằng lint (§2.1, ADR-002); thêm một ứng dụng là thêm một thư mục khai báo, không sửa mã nền tảng. | EP-24, EP-25. |
 | NFR-08 — QC không cần đọc/viết phần cài đặt từ Phase 2 | Phần mô tả hành vi tồn tại thành tệp riêng, đọc được ở trạng thái tĩnh; đưa nó tới QC không đòi hỏi một chức năng hiển thị riêng (ADR-007). | Phụ thuộc vào kỷ luật viết step ở mức nghiệp vụ. |
-| NFR-09 — mô tả hành vi luôn khớp hành vi được thực thi | Phần mô tả hành vi chính là thứ được thực thi, nên hai bên không tách rời được (ADR-007). Mọi lựa chọn thiết kế về sau cho việc soạn và hiển thị kịch bản chịu ràng buộc này. | Yêu cầu ở mức nghiệp vụ, không phụ thuộc vào lựa chọn công cụ hiện tại. |
+| NFR-09 — mô tả hành vi luôn khớp hành vi được thực thi | Phần mô tả hành vi chính là thứ được thực thi, nên hai bên không tách rời được (ADR-007). Mọi lựa chọn thiết kế về sau cho việc soạn và hiển thị test case chịu ràng buộc này. | Yêu cầu ở mức nghiệp vụ, không phụ thuộc vào lựa chọn công cụ hiện tại. |
 | NFR-10 — thu thập bằng chứng không kéo dài đáng kể lượt chạy | Nhật ký thực thi là thao tác trong bộ nhớ; ảnh chụp chỉ phát sinh ở bước hỏng; ghi tệp và ghi cơ sở dữ liệu không nằm trên đường chờ của bước kế tiếp (§2.2). | Ảnh hưởng trực tiếp SM-02. Dựa trên AS-05. |
 | NFR-11 — toàn bộ kho mã bằng tiếng Anh | Quy tắc ngôn ngữ ở `coding-convention.md`; ranh giới nằm ở biên giữa `docs/` và phần còn lại của kho mã. | BC-10. |
+| NFR-12 — dữ liệu kiểm thử ngoài kho mã | Giá trị dữ liệu kiểm thử của mỗi ứng dụng nằm ở `apps/<app-id>/test-data.local.json` không được Git theo dõi; kho mã chỉ chứa khuôn `test-data.example.json`. Nạp qua Config & Secrets, nhánh bí mật bị che ở tầng log (ADR-009). | Mở rộng phạm vi bí mật ngoài kho mã từ khóa API xuống dữ liệu kiểm thử theo từng ứng dụng. |
 
 ---
 
@@ -340,11 +345,11 @@ Mã NFR-01 đến NFR-09 theo `brd.md` §9. NFR-10 và NFR-11 chỉ có ở `req
 |---|---|
 | Máy chủ kết quả tập trung, tổng hợp dữ liệu xuyên nhiều máy QC (EP-22) | Khi QC Lead cần xu hướng gộp toàn đội, hoặc khi số máy QC vượt quá mức mà việc đọc từng máy còn khả thi. |
 | Container hóa | Khi EP-22 vào phạm vi. Thành phần máy chủ kết quả là service chạy trên Linux, không vướng ràng buộc macOS của tầng thực thi, nên là đối tượng đầu tiên phù hợp để đóng gói bằng container. |
-| Cơ chế nền tảng đặt lại ứng dụng về trạng thái sạch | Khi xuất hiện trạng thái ứng dụng không đặt lại được bằng thao tác trong kịch bản, ví dụ luồng chỉ hiển thị ở lần cài đặt đầu tiên hoặc dữ liệu lưu ngoài phạm vi giao diện. |
+| Cơ chế nền tảng đặt lại ứng dụng về trạng thái sạch | Khi xuất hiện trạng thái ứng dụng không đặt lại được bằng thao tác trong test case, ví dụ luồng chỉ hiển thị ở lần cài đặt đầu tiên hoặc dữ liệu lưu ngoài phạm vi giao diện. |
 | Chụp ảnh màn hình ở mọi bước | Khi AS-05 không còn đúng, tức là nhật ký thực thi không đủ để điều tra một loại lỗi lặp lại, và chi phí thời gian của việc chụp toàn bộ được chấp nhận. |
 | Giao diện web cho nền tảng | Khi thao tác dòng lệnh trở thành rào cản thực tế với QC, đo được qua số lần cần hỗ trợ. |
 | Chạy song song nhiều thiết bị trong một lượt chạy | Khi thời gian một vòng hồi quy (SM-02) vượt ngưỡng chấp nhận được của QC. |
-| Công cụ rà soát trùng lặp step definition | Khi số step definition tăng nhanh hơn số kịch bản, hoặc khi lỗi khớp mơ hồ xuất hiện lặp lại. |
+| Công cụ rà soát trùng lặp step definition | Khi số step definition tăng nhanh hơn số test case, hoặc khi lỗi khớp mơ hồ xuất hiện lặp lại. |
 | Kho locator lịch sử phục vụ self-healing không cần gọi mô hình | Khi chi phí hoặc độ trễ gọi Claude lúc chạy vượt ngưỡng chấp nhận được, đo qua SM-05 và số lần gọi thực tế. |
 | Chuyển `better-sqlite3` sang module `node:sqlite` có sẵn | Khi phiên bản Node.js chứa `node:sqlite` ở trạng thái ổn định trở thành LTS và được cài trên máy QC. |
 | Tách nền tảng thành package độc lập trong monorepo | Khi nền tảng cần được dùng bởi một đội khác dưới dạng thư viện phát hành, hoặc khi số ứng dụng lớn tới mức một kho mã chung gây trở ngại khi rà soát pull request. |
@@ -360,6 +365,6 @@ Mã NFR-01 đến NFR-09 theo `brd.md` §9. NFR-10 và NFR-11 chỉ có ở `req
 - `GIẢ ĐỊNH:` Một lượt chạy thực thi tuần tự trên một thiết bị tại một thời điểm. Chạy song song nhiều thiết bị không nằm trong yêu cầu đã chốt.
 - `GIẢ ĐỊNH:` Bản build được cung cấp dưới dạng tệp trên máy QC (`.app` cho simulator, `.ipa` đã ký cho thiết bị thật); nền tảng không tải build từ nguồn từ xa.
 - `GIẢ ĐỊNH:` Thư mục `output/` nằm trong kho mã nhưng không được Git theo dõi. Dữ liệu kết quả không dùng chung giữa các máy QC (AS-04).
-- `GIẢ ĐỊNH:` Mọi trạng thái ứng dụng mà kịch bản cần đặt lại đều đặt lại được bằng thao tác qua giao diện. Nếu giả định này sai với một ứng dụng cụ thể, cơ chế đặt lại ở mức nền tảng được đưa vào theo ngưỡng ở §6.
+- `GIẢ ĐỊNH:` Mọi trạng thái ứng dụng mà test case cần đặt lại đều đặt lại được bằng thao tác qua giao diện. Nếu giả định này sai với một ứng dụng cụ thể, cơ chế đặt lại ở mức nền tảng được đưa vào theo ngưỡng ở §6.
 
 **Các mục cần làm rõ** nằm ở `docs/handoff/open-items.md`.

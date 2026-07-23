@@ -1,0 +1,99 @@
+# Component Design — Phase 1
+
+Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF).
+
+Danh sách tệp dưới mỗi module là tệp đại diện, không phải danh sách đầy đủ; việc chia hàm/tệp cấp ticket thuộc Team Lead.
+
+---
+
+## CLI Entry
+**Trách nhiệm:** Nhận lệnh của QC, khởi động một lượt chạy và hiển thị tiến trình.
+**Cấu trúc bên trong:**
+- `commands/run.ts` — lệnh `aimtap run <app-id>`: phân giải tham số (thiết bị, tập chạy theo test feature/tên/nhãn), gọi chuỗi kiểm tra tiền điều kiện rồi Test Runner.
+- `commands/report.ts` — lệnh `aimtap report <run-id>`: gọi Reporter sinh lại báo cáo từ dữ liệu đã lưu, không chạy lại test case.
+- `commands/doctor.ts` — lệnh `aimtap doctor`: gọi `environment-check` của Device & Build Manager.
+- `progress-view.ts` — hiển thị test case đang chạy kèm test feature, số đã hoàn tất trên tổng, trạng thái từng test case (FR-RUN-03, US-10).
+**Phụ thuộc:** Config & Secrets, Device & Build Manager, Test Runner.
+**Requirement liên quan:** FR-RUN-01, FR-RUN-02, FR-RUN-03, UC-06.
+
+## App Registry
+**Trách nhiệm:** Giữ và kiểm tra khai báo của từng ứng dụng.
+**Cấu trúc bên trong:**
+- `app-config.schema.ts` — schema Zod của `app.config.ts`: định danh, đường dẫn build, loại thiết bị, định danh thiết bị, phiên bản OS đích. Nguồn duy nhất của cả kiểu lẫn phép kiểm tra.
+- `load-app-config.ts` — nạp khai báo của một `<app-id>` theo quy ước đường dẫn, kiểm tra qua schema, trả lỗi nêu rõ trường thiếu/sai (E1, E2 của UC-01).
+**Phụ thuộc:** Shared.
+**Requirement liên quan:** FR-APP-01, FR-APP-02, FR-APP-03, FR-AUTH-08, BR-008, UC-01.
+
+## Config & Secrets
+**Trách nhiệm:** Cấu hình vận hành, nạp khóa API và dữ liệu kiểm thử từ nguồn ngoài kho mã; kiểm tra tính đầy đủ của dữ liệu kiểm thử.
+**Cấu trúc bên trong:**
+- `env.schema.ts` — schema Zod cho biến môi trường (gồm khóa API Phase 2).
+- `platform-config.ts` — cấu hình vận hành: thời gian chờ, thư mục output, công tắc AI.
+- `secrets.ts` — nạp khóa API và dữ liệu kiểm thử của một ứng dụng từ `apps/<app-id>/test-data.local.json`, kiểm tra qua schema theo ứng dụng, đánh dấu nhánh bí mật vào danh sách che của logger; phần kiểm tra tính đầy đủ báo mục thiếu theo đường dẫn trường (ADR-009, FR-APP-04, FR-APP-05, US-19).
+**Phụ thuộc:** Shared.
+**Requirement liên quan:** FR-APP-04, FR-APP-05, NFR-04, NFR-12, BR-015, BR-017.
+
+## Device & Build Manager
+**Trách nhiệm:** Chuẩn bị thiết bị, cài build, kiểm tra thiết bị sẵn sàng trước và giữa lượt chạy.
+**Cấu trúc bên trong:**
+- `device-manager.ts` — hợp đồng chung: `prepareDevice`, `installBuild`, `ensureReadyBeforeRun` (FR-DEV-02, đầy đủ ở tầng hệ điều hành), `probeDuringRun` (ADR-010, probe nhẹ trên phiên).
+- `simulator-driver.ts` / `real-device-driver.ts` — cài đặt cho hai loại thiết bị qua `simctl` và công cụ thiết bị thật.
+- `environment-check.ts` — kiểm tra Node, Xcode, Appium, thiết bị khả dụng, bản build tồn tại; dùng chung với `doctor` và với bước tiền điều kiện.
+**Phụ thuộc:** Appium, công cụ dòng lệnh của Xcode, Shared.
+**Requirement liên quan:** FR-DEV-01→04, FR-EXEC-01, BR-015, BR-018, UC-05.
+
+## Test Runner
+**Trách nhiệm:** Thực thi test case được chọn, quản lý vòng đời phiên Appium, phát sự kiện bước/test case, điều phối probe thiết bị và điều kiện dừng.
+**Cấu trúc bên trong:**
+- `run-session.ts` — vòng đời một lượt chạy: sinh `run-id`, mở phiên một lần, vòng lặp test case (probe trước mỗi test case theo ADR-010), gom trạng thái tổng hợp, xử lý hủy và dừng do thiết bị (BR-002, BR-011, BR-012, BR-018).
+- `cucumber-hooks.ts` — móc `beforeScenario`/`beforeStep`/`afterStep`/`afterScenario`, chuyển sự kiện tới Evidence Collector; giữ "màn hình hiện tại" (ADR-011).
+- `wdio-service.ts` — gắn nền tảng vào WebdriverIO testrunner.
+**Phụ thuộc:** WebdriverIO, Cucumber, Appium, Device & Build Manager, Evidence Collector, Locator Resolver.
+**Requirement liên quan:** FR-RUN-01→06, FR-EXEC-01, FR-EXEC-07, UC-06, UC-07.
+
+## Locator Resolver
+**Trách nhiệm:** Điểm duy nhất tìm phần tử; điểm chèn self-healing của Phase 2 (ADR-004).
+**Cấu trúc bên trong:**
+- `locator-resolver.ts` — `find(locator, screenName)`: Phase 1 gọi thẳng WebdriverIO qua `wait-policy`, trả phần tử hoặc ném lỗi không tìm thấy; nhận tên màn hình do Page Object truyền để chuyển tới Test Runner (ADR-011).
+- `locator.ts` — kiểu Locator và các chiến lược iOS (accessibility id, id, predicate string, class chain).
+- `wait-policy.ts` — thời gian chờ có điều kiện tập trung, dùng cho cả tìm phần tử và probe thiết bị.
+**Phụ thuộc:** Test Runner (phiên Appium).
+**Requirement liên quan:** FR-AUTH-02, FR-AUTH-03, BR-007, UC-02.
+
+## Evidence Collector
+**Trách nhiệm:** Dựng bằng chứng thực thi của mỗi test case và đẩy bản ghi sang Result Store.
+**Cấu trúc bên trong:**
+- `evidence-collector.ts` — nhận sự kiện bước/test case, dựng bản ghi kết quả và nhật ký, đẩy sang Result Store; đọc màn hình hiện tại tại bước hỏng (ADR-011).
+- `execution-log.ts` — dựng nhật ký thực thi trong bộ nhớ: bước theo thứ tự, kết quả, thời lượng, lỗi tại bước hỏng.
+- `screenshot-writer.ts` — chụp và ghi ảnh tại bước hỏng và bước được đánh dấu, ngoài đường chờ của bước.
+- `failure-classifier.ts` — phân loại `AppFailure`/`PlatformFailure`, và loại lỗi hai giá trị của BR-014.
+**Phụ thuộc:** Result Store, Shared.
+**Requirement liên quan:** FR-EXEC-03→06, FR-EXEC-10, BR-003, BR-004, BR-014, UC-07.
+
+## Result Store
+**Trách nhiệm:** Lưu bản ghi kết quả có cấu trúc trên máy QC (ADR-003).
+**Cấu trúc bên trong:**
+- `database.ts` — mở SQLite tại `output/<app-id>/results.db`, bật WAL, chuẩn bị câu lệnh.
+- `migrations/` — nâng cấp schema có đánh số, chạy lúc khởi động.
+- `run-repository.ts` — ghi/đọc Run, TestCaseResult, StepLog theo giao dịch; chỉ chèn thêm.
+- `models.ts` — kiểu bản ghi kết quả, khớp `erd.md`.
+**Phụ thuộc:** `better-sqlite3`, Shared.
+**Requirement liên quan:** FR-DATA-01→05, BR-009, UC-07.
+
+## Reporter
+**Trách nhiệm:** Sinh báo cáo một tệp của một lượt chạy (ADR-006).
+**Cấu trúc bên trong:**
+- `report-model.ts` — dựng mô hình báo cáo từ Result Store: bối cảnh lượt chạy, bảng tóm tắt nhóm theo test feature, chi tiết mỗi test case hỏng.
+- `templates/` — mẫu HTML/CSS do nền tảng kiểm soát.
+- `render.ts` — dựng HTML rồi xuất PNG/PDF bằng trình duyệt không giao diện (ADR-012).
+**Phụ thuộc:** Result Store, công cụ PDF (ADR-012), Shared.
+**Requirement liên quan:** FR-REP-01→04, BR-012, UC-08, UC-09.
+
+## Shared
+**Trách nhiệm:** Hạ tầng dùng chung.
+**Cấu trúc bên trong:**
+- `logger.ts` — log có cấu trúc (Pino), gắn `run-id`, che trường bí mật.
+- `errors.ts` — `AppFailure` và `PlatformFailure`.
+- `types.ts` — kiểu dùng chung.
+**Phụ thuộc:** —
+**Requirement liên quan:** NFR-03 (tách hai nhánh lỗi), NFR-04 (che bí mật).
