@@ -14,6 +14,9 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đã xử lý
 
+### CẦN TEAM-LEAD LÀM: Chỉnh diễn đạt TICKET-018/019 theo mô hình thực thi Test Runner (ADR-013) — *đã xử lý*
+Đồng bộ TICKET-018/019 (trong `docs/tickets/phase-1/us-3-4-run-orchestration.md`) với ADR-013. TICKET-018 (`cucumber-hooks.ts`): `beforeScenario` bỏ qua test case nếu cờ dừng đã bật, ngược lại gọi `probeDuringRun` và bật cờ dừng `device_unavailable` khi `unavailable`; test case `failed` không bật cờ dừng (BR-002); `beforeStep`/`afterStep`/`afterScenario` chuyển sự kiện tới Evidence Collector. TICKET-019 (`run-session.ts`): không tự lặp qua test case, giữ trạng thái tổng hợp và cờ dừng, `saveRunStart` ở hook `before`, `finalizeRun` ở hook `after` (`not_run_count` = số scenario bị bỏ qua), hủy qua SIGINT với `stop_reason = cancelled_by_qc`; tiêu chí chọn tập dịch thành bộ lọc spec/tag của Cucumber lúc khởi động. Cập nhật `board.md` phụ thuộc cấp ticket (018 nay phụ thuộc 019); phụ thuộc cấp user story của US-3.4 không đổi. Không chạm khuôn khổ.
+
 ### CẦN TEAM-LEAD LÀM: Tiếp nhận thiết kế Phase 1 để chẻ ticket — *đã xử lý*
 Giai đoạn 0 (quy ước ticket) và Giai đoạn 1 (chẻ ticket Phase 1) hoàn tất. Phân cấp tổ chức: **Epic → User Story → Ticket** (`docs/tickets/conventions.md`). Phase 1 chẻ theo Phương án A (lát mỏng theo module) thành **5 epic → 17 user story → 27 ticket**, phủ toàn bộ US-01→US-20 nghiệp vụ. Mỗi user story là một tệp `docs/tickets/phase-1/us-*.md` chứa ticket inline (một user story = một pull request; mỗi ticket = một commit) và link về US nghiệp vụ qua field "Business US (BA)". `board.md` định nghĩa epic, danh sách user story thuộc từng epic, thứ tự merge và phụ thuộc. Quy tắc style/thực thi cấp mã bổ sung vào `coding-convention.md` §"Thực thi & style" (đặt tên, tệp `.feature`/test case, commit/PR, kiểm thử đơn vị) — chỉ style/thực thi, không chạm khuôn khổ. Không có điểm nào cần đẩy ngược về SA/BA.
 

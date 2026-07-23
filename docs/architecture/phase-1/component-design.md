@@ -1,6 +1,6 @@
 # Component Design — Phase 1
 
-Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF).
+Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF), ADR-013 (mô hình thực thi Test Runner).
 
 Danh sách tệp dưới mỗi module là tệp đại diện, không phải danh sách đầy đủ; việc chia hàm/tệp cấp ticket thuộc Team Lead.
 
@@ -43,11 +43,12 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 **Requirement liên quan:** FR-DEV-01→04, FR-EXEC-01, BR-015, BR-018, UC-05.
 
 ## Test Runner
-**Trách nhiệm:** Thực thi test case được chọn, quản lý vòng đời phiên Appium, phát sự kiện bước/test case, điều phối probe thiết bị và điều kiện dừng.
+**Trách nhiệm:** Thực thi test case được chọn, quản lý vòng đời phiên Appium, phát sự kiện bước/test case, điều phối probe thiết bị và điều kiện dừng. WebdriverIO/Cucumber điều khiển việc lặp qua test case; nền tảng phản ứng qua hook vòng đời (ADR-013).
 **Cấu trúc bên trong:**
-- `run-session.ts` — vòng đời một lượt chạy: sinh `run-id`, mở phiên một lần, vòng lặp test case (probe trước mỗi test case theo ADR-010), gom trạng thái tổng hợp, xử lý hủy và dừng do thiết bị (BR-002, BR-011, BR-012, BR-018).
-- `cucumber-hooks.ts` — móc `beforeScenario`/`beforeStep`/`afterStep`/`afterScenario`, chuyển sự kiện tới Evidence Collector; giữ "màn hình hiện tại" (ADR-011).
-- `wdio-service.ts` — gắn nền tảng vào WebdriverIO testrunner.
+- `run-session.ts` — trạng thái và điều phối một lượt chạy trong tiến trình worker: sinh `run-id`, giữ trạng thái tổng hợp và cờ dừng, quyết định khi probe trả `unavailable` hoặc khi QC hủy. `saveRunStart` chạy ở hook `before`, `finalizeRun` (trạng thái tổng hợp, BR-011) ở hook `after` (ADR-013). Không tự lặp qua test case.
+- `cucumber-hooks.ts` — handler vòng đời: `beforeScenario` gọi `probeDuringRun` (ADR-010); nếu cờ dừng đã bật hoặc probe trả `unavailable` thì bỏ qua test case và không sinh bản ghi (BR-012, BR-018). Test case `failed` không bật cờ dừng (BR-002). `beforeStep`/`afterStep`/`afterScenario` chuyển sự kiện tới Evidence Collector; giữ "màn hình hiện tại" (ADR-011).
+- `wdio-service.ts` — gắn nền tảng vào WebdriverIO testrunner; đăng ký các hook trên và mở phiên Appium một lần cho mỗi lượt chạy.
+- Hủy bởi QC: bắt tín hiệu ngắt (SIGINT) trong worker, bật cờ dừng với `stop_reason = cancelled_by_qc`; test case còn lại bị bỏ qua, `finalizeRun` đánh dấu `incomplete` (ADR-013).
 **Phụ thuộc:** WebdriverIO, Cucumber, Appium, Device & Build Manager, Evidence Collector, Locator Resolver.
 **Requirement liên quan:** FR-RUN-01→06, FR-EXEC-01, FR-EXEC-07, UC-06, UC-07.
 
