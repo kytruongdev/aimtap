@@ -1,3 +1,4 @@
-// App Registry — load and validate per-app declaration (app.config.ts).
-// Implemented in US-1.3 (TICKET-005).
-export {};
+// App Registry — load and validate the declaration of one app (TICKET-005).
+export { appConfigSchema } from './app-config.schema.js';
+export type { AppConfig } from './app-config.schema.js';
+export { loadAppConfig, parseAppConfig } from './load-app-config.js';

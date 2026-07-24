@@ -1,4 +1,4 @@
-// Two error branches of the platform (north-star.md §2.2, coding-convention.md §Xử-lý-lỗi):
+// Two error branches of the platform (north-star.md §2.2; coding-convention.md, error handling):
 // - AppFailure: failure of the app under test — a valid result, recorded in the result record.
 // - PlatformFailure: failure of the platform/environment — never recorded as "test case failed".
 
