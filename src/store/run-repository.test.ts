@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import Database from 'better-sqlite3';
+import { isPlatformFailure } from '../shared/index.js';
 import { applyMigrations } from './database.js';
-import { createRunRepository, type RunStart } from './run-repository.js';
+import { createRunRepository, type RunFinalize, type RunStart } from './run-repository.js';
 import { SCHEMA_VERSION, type StepLog, type TestCaseResult } from './models.js';
 
 function freshRepo() {
@@ -22,6 +23,15 @@ const runStart: RunStart = {
   scope_kind: 'full_suite',
   scope_criteria: null,
   schema_version: SCHEMA_VERSION,
+};
+
+const finalize: RunFinalize = {
+  run_id: 'r1',
+  ended_at: '2026-07-24T10:05:00.000Z',
+  total_duration_ms: 300000,
+  completion: 'completed',
+  not_run_count: 0,
+  stop_reason: null,
 };
 
 function makeResult(overrides: Partial<TestCaseResult> = {}): TestCaseResult {
@@ -107,14 +117,7 @@ describe('run repository', () => {
       [],
     );
 
-    repo.finalizeRun({
-      run_id: 'r1',
-      ended_at: '2026-07-24T10:05:00.000Z',
-      total_duration_ms: 300000,
-      completion: 'completed',
-      not_run_count: 0,
-      stop_reason: null,
-    });
+    repo.finalizeRun(finalize);
 
     expect(repo.getRunModel('r1')?.run.aggregate_result).toBe('failed');
   });
@@ -125,14 +128,7 @@ describe('run repository', () => {
     repo.saveTestCaseResult(makeResult({ id: 'tc-1', status: 'passed' }), []);
     repo.saveTestCaseResult(makeResult({ id: 'tc-2', status: 'passed_healed' }), []);
 
-    repo.finalizeRun({
-      run_id: 'r1',
-      ended_at: '2026-07-24T10:05:00.000Z',
-      total_duration_ms: 120000,
-      completion: 'completed',
-      not_run_count: 0,
-      stop_reason: null,
-    });
+    repo.finalizeRun(finalize);
 
     const run = repo.getRunModel('r1')?.run;
     expect(run?.aggregate_result).toBe('passed');
@@ -143,5 +139,30 @@ describe('run repository', () => {
     const repo = freshRepo();
     repo.saveRunStart(runStart);
     expect(() => repo.saveRunStart(runStart)).toThrow();
+  });
+
+  it('rejects finalizing a run that does not exist', () => {
+    const repo = freshRepo();
+    try {
+      repo.finalizeRun(finalize);
+      throw new Error('expected finalizeRun to throw');
+    } catch (error) {
+      expect(isPlatformFailure(error)).toBe(true);
+      expect((error as Error).message).toContain('does not exist');
+    }
+  });
+
+  it('rejects finalizing the same run twice', () => {
+    const repo = freshRepo();
+    repo.saveRunStart(runStart);
+    repo.finalizeRun(finalize);
+
+    try {
+      repo.finalizeRun(finalize);
+      throw new Error('expected the second finalizeRun to throw');
+    } catch (error) {
+      expect(isPlatformFailure(error)).toBe(true);
+      expect((error as Error).message).toContain('already finalized');
+    }
   });
 });
