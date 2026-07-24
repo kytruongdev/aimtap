@@ -17,6 +17,7 @@
     "@cucumber/cucumber": "^11.2.0",
     "@wdio/cli": "^9.5.7",
     "@wdio/cucumber-framework": "^9.5.7",
+    "@wdio/globals": "^9.5.7",
     "@wdio/local-runner": "^9.5.7",
     "@wdio/spec-reporter": "^9.5.7",
     "better-sqlite3": "^11.8.1",
