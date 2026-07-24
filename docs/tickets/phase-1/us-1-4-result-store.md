@@ -33,16 +33,17 @@ Mỗi ứng dụng có một tệp SQLite kết quả tại `output/<app-id>/res
 
 **Chỉ dẫn code**
 - `src/store/run-repository.ts`:
-  - `saveRunStart(run)` — ghi bối cảnh lúc mở (định danh, thời điểm bắt đầu, ứng dụng, phiên bản, thiết bị, loại thiết bị, OS, `scope_kind`/`scope_criteria`, `schema_version`).
-  - `finalizeRun(run)` — ghi trạng thái tổng hợp: `ended_at`, `total_duration_ms`, `completion`, `aggregate_result` (BR-011), `not_run_count`, `stop_reason`.
+  - `saveRunStart(run)` — chèn hàng Run với bối cảnh lúc mở (định danh, thời điểm bắt đầu, ứng dụng, phiên bản, thiết bị, loại thiết bị, OS, `scope_kind`/`scope_criteria`, `schema_version`) ở trạng thái chưa hoàn tất, để khóa ngoại của TestCaseResult phân giải được trong lúc chạy.
+  - `finalizeRun(summary)` — hoàn tất hàng tổng hợp của chính lượt chạy đó: `ended_at`, `total_duration_ms`, `completion`, `not_run_count`, `stop_reason`, và `aggregate_result` suy từ các TestCaseResult đã lưu (BR-011). Hoàn tất đúng một lần: gọi lần hai, hoặc gọi cho một lượt chạy không tồn tại, ném `PlatformFailure`.
   - `saveTestCaseResult(result, steps[])` — một giao dịch cho mỗi test case: chèn TestCaseResult + các StepLog.
   - `getRunModel(runId)` — đọc `{ run; results[]; steps[] }` cho Reporter.
-  - Không có cập nhật/xóa (FR-DATA-05, BR-009).
+  - Bản ghi kết quả (TestCaseResult, StepLog) chỉ chèn thêm — không có đường cập nhật hay xóa; một lượt chạy mới không ghi đè dữ liệu của lượt chạy trước (FR-DATA-05, BR-009).
 - Mọi truy cập DB đi qua repository này. Cập nhật `src/store/index.ts`.
 
 **Acceptance Criteria (cấp code)**
 - [ ] Ghi một test case là một giao dịch (test đơn vị mô phỏng lỗi giữa chừng).
-- [ ] Không có đường cập nhật/xóa; thử ghi đè bị chặn ở tầng repository.
+- [ ] Bản ghi kết quả chỉ chèn thêm: không có đường cập nhật/xóa cho TestCaseResult và StepLog; ghi đè một lượt chạy đã tồn tại bị chặn.
+- [ ] Hàng tổng hợp của lượt chạy được hoàn tất đúng một lần bằng `finalizeRun`; gọi lần hai hoặc gọi cho `run_id` không tồn tại ném `PlatformFailure`.
 - [ ] `getRunModel` trả đủ `run`, `results[]`, `steps[]`.
 - [ ] `aggregate_result = passed` chỉ khi mọi test case ở `passed`/`passed_healed` (test đơn vị).
 - [ ] Lượt chạy bị ngắt vẫn còn dữ liệu test case đã hoàn tất (BR-012).

@@ -11,7 +11,7 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 **Cấu trúc bên trong:**
 - `commands/run.ts` — lệnh `aimtap run <app-id>`: phân giải tham số (thiết bị, tập chạy theo test feature/tên/nhãn), gọi chuỗi kiểm tra tiền điều kiện rồi Test Runner.
 - `commands/report.ts` — lệnh `aimtap report <run-id>`: gọi Reporter sinh lại báo cáo từ dữ liệu đã lưu, không chạy lại test case.
-- `commands/doctor.ts` — lệnh `aimtap doctor`: gọi `environment-check` của Device & Build Manager.
+- `commands/doctor.ts` — lệnh `aimtap doctor`: gọi `checkEnvironment` (kèm target) của Device & Build Manager.
 - `progress-view.ts` — hiển thị test case đang chạy kèm test feature, số đã hoàn tất trên tổng, trạng thái từng test case (FR-RUN-03, US-10).
 **Phụ thuộc:** App Registry, Config & Secrets, Device & Build Manager, Test Runner, Reporter, Shared.
 **Requirement liên quan:** FR-RUN-01, FR-RUN-02, FR-RUN-03, UC-06.
@@ -36,9 +36,11 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 ## Device & Build Manager
 **Trách nhiệm:** Chuẩn bị thiết bị, cài build, kiểm tra thiết bị sẵn sàng trước và giữa lượt chạy.
 **Cấu trúc bên trong:**
-- `device-manager.ts` — hợp đồng chung: `prepareDevice`, `installBuild`, `ensureReadyBeforeRun` (FR-DEV-02, đầy đủ ở tầng hệ điều hành), `probeDuringRun` (ADR-010, probe nhẹ trên phiên).
+- `device-manager.ts` — hợp đồng chung: `prepareDevice`, `installBuild`, `ensureReadyBeforeRun` (FR-DEV-02; sở hữu kiểm tra thiết bị/OS/bản build ở tầng hệ điều hành, trả `DeviceContext`), `probeDuringRun` (ADR-010, probe nhẹ trên phiên).
 - `simulator-driver.ts` / `real-device-driver.ts` — cài đặt cho hai loại thiết bị qua `simctl` và công cụ thiết bị thật.
-- `environment-check.ts` — kiểm tra Node, Xcode, Appium, thiết bị khả dụng, bản build tồn tại; dùng chung với `doctor` và với bước tiền điều kiện.
+- `environment-check.ts` — `checkEnvironment(probes, target?)`: luôn kiểm host tools (Node, Xcode, Appium); kèm `target` thì thêm bản build/thiết bị/OS. Gom mọi mục trước khi báo; `assertEnvironmentReady` gộp mục hỏng thành một `PlatformFailure`.
+
+Phân vai ở bước tiền điều kiện lượt chạy để không kiểm trùng: CLI gọi `checkEnvironment` **không kèm target** (chỉ host tools Node/Xcode/Appium — điều kiện độc lập ứng dụng), còn `ensureReadyBeforeRun` sở hữu thiết bị/OS/bản build và trả `DeviceContext`. `doctor` gọi `checkEnvironment` **kèm target** cho chẩn đoán một lần đầy đủ. Cả hai đáp ứng §2.2 "Node, Xcode, Appium, thiết bị, bản build kiểm trước khi mở phiên Appium".
 **Phụ thuộc:** App Registry (kiểu `AppConfig`), Appium, công cụ dòng lệnh của Xcode, Shared.
 **Requirement liên quan:** FR-DEV-01→04, FR-EXEC-01, BR-015, BR-018, UC-05.
 
@@ -49,7 +51,7 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 - `cucumber-hooks.ts` — handler vòng đời: `beforeScenario` gọi `probeDuringRun` (ADR-010); nếu cờ dừng đã bật hoặc probe trả `unavailable` thì bỏ qua test case và không sinh bản ghi (BR-012, BR-018). Test case `failed` không bật cờ dừng (BR-002). `beforeStep`/`afterStep`/`afterScenario` chuyển sự kiện tới Evidence Collector. Tiêm sink tên màn hình vào Locator Resolver lúc mở phiên (ADR-014) và giữ "màn hình hiện tại" (ADR-011).
 - `wdio-service.ts` — gắn nền tảng vào WebdriverIO testrunner; đăng ký các hook trên và mở phiên Appium một lần cho mỗi lượt chạy.
 - Hủy bởi QC: bắt tín hiệu ngắt (SIGINT) trong worker, bật cờ dừng với `stop_reason = cancelled_by_qc`; test case còn lại bị bỏ qua, `finalizeRun` đánh dấu `incomplete` (ADR-013).
-**Phụ thuộc:** WebdriverIO, Cucumber, Appium, Device & Build Manager, Locator Resolver, Evidence Collector, Shared.
+**Phụ thuộc:** WebdriverIO, Cucumber, Appium, Device & Build Manager, Locator Resolver, Evidence Collector, Result Store, Shared.
 **Requirement liên quan:** FR-RUN-01→06, FR-EXEC-01, FR-EXEC-07, UC-06, UC-07.
 
 ## Locator Resolver

@@ -20,10 +20,12 @@ sequenceDiagram
     QC->>CLI: aimtap run <app-id> [--scope]
     CLI->>Reg: loadAppConfig(app-id)
     Reg-->>CLI: AppConfig (hoặc PlatformFailure: khai báo sai)
+    CLI->>Dev: checkEnvironment() — host tools Node/Xcode/Appium
+    Dev-->>CLI: ok, hoặc PlatformFailure gom mọi host tool thiếu
     CLI->>Cfg: verifyTestDataComplete(app-id)
     Cfg-->>CLI: ok | missing[]
     CLI->>Dev: ensureReadyBeforeRun(AppConfig)
-    Dev-->>CLI: DeviceContext (hoặc PlatformFailure: thiết bị/build)
+    Dev-->>CLI: DeviceContext (hoặc PlatformFailure: thiết bị/OS/build)
     CLI->>Dev: installBuild()
     CLI->>WDIO: khởi chạy testrunner (scope → bộ lọc Cucumber, DeviceContext)
     WDIO->>Runner: before (đầu phiên worker)
@@ -32,7 +34,7 @@ sequenceDiagram
     Runner-->>CLI: run-id + luồng sự kiện tiến trình
 ```
 
-Điểm thất bại: bất kỳ kiểm tra tiền điều kiện nào không thỏa (khai báo, dữ liệu kiểm thử thiếu, bản build, thiết bị) làm lượt chạy **không mở**, không sinh bản ghi, không sinh báo cáo; lý do nêu theo từng mục (BR-015, FR-APP-04, UC-06 E1). Tập chạy rỗng cũng không mở lượt chạy (UC-06 E2). Tiền điều kiện chạy trong tiến trình CLI trước khi khởi chạy testrunner; `run-id` sinh trong hook `before` ở tiến trình worker và về CLI qua luồng sự kiện, không phải giá trị trả đồng bộ (ADR-013).
+Điểm thất bại: bất kỳ kiểm tra tiền điều kiện nào không thỏa (host tools, khai báo, dữ liệu kiểm thử thiếu, thiết bị/OS/bản build) làm lượt chạy **không mở**, không sinh bản ghi, không sinh báo cáo; lý do nêu theo từng mục (BR-015, FR-APP-04, UC-06 E1). `checkEnvironment` không kèm target kiểm host tools Node/Xcode/Appium (độc lập ứng dụng); `ensureReadyBeforeRun` sở hữu thiết bị/OS/bản build và trả `DeviceContext` — hai bên không kiểm trùng (§2.2, `component-design.md` §Device & Build Manager). Tập chạy rỗng cũng không mở lượt chạy (UC-06 E2). Tiền điều kiện chạy trong tiến trình CLI trước khi khởi chạy testrunner; `run-id` sinh trong hook `before` ở tiến trình worker và về CLI qua luồng sự kiện, không phải giá trị trả đồng bộ (ADR-013).
 
 ---
 
