@@ -14,6 +14,9 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đã xử lý
 
+### CẦN SA LÀM RÕ: Ma trận phụ thuộc module Phase 1 (phát hiện lúc implement US-1.1) — *đã xử lý*
+**Chốt:** (1) Chu trình Test Runner ↔ Locator Resolver gỡ theo Phương án C của ADR-014 (Proposed) — Locator không import Test Runner, dùng phiên WebdriverIO toàn cục để tìm phần tử, nhận tên màn hình qua sink Test Runner tiêm lúc mở phiên (`registerScreenSink`); quan hệ một chiều Test Runner → Locator Resolver, Locator chỉ phụ thuộc Shared. (2) CLI phụ thuộc thêm App Registry và Reporter. (3) Shared là kernel mọi module trong `src/` được phép import; Device & Build Manager → App Registry (chỉ kiểu `AppConfig`). Đã vào `north-star.md` §2/§2.1/§3, `component-design.md`, `interface-spec.md`, `adr/adr-014.md`. Ma trận provisional trong `eslint.config.ts` khớp ba hướng này nên chốt lại không kéo theo sửa mã US-1.1; Team Lead bỏ nhãn provisional ở `eslint.config.ts` và chỉnh diễn đạt US-2.1 (Locator dùng phiên toàn cục + sink) và US-3.4 (Test Runner tiêm sink) theo ADR-014.
+
 ### CẦN TEAM-LEAD LÀM: Chỉnh diễn đạt TICKET-018/019 theo mô hình thực thi Test Runner (ADR-013) — *đã xử lý*
 Đồng bộ TICKET-018/019 (trong `docs/tickets/phase-1/us-3-4-run-orchestration.md`) với ADR-013. TICKET-018 (`cucumber-hooks.ts`): `beforeScenario` bỏ qua test case nếu cờ dừng đã bật, ngược lại gọi `probeDuringRun` và bật cờ dừng `device_unavailable` khi `unavailable`; test case `failed` không bật cờ dừng (BR-002); `beforeStep`/`afterStep`/`afterScenario` chuyển sự kiện tới Evidence Collector. TICKET-019 (`run-session.ts`): không tự lặp qua test case, giữ trạng thái tổng hợp và cờ dừng, `saveRunStart` ở hook `before`, `finalizeRun` ở hook `after` (`not_run_count` = số scenario bị bỏ qua), hủy qua SIGINT với `stop_reason = cancelled_by_qc`; tiêu chí chọn tập dịch thành bộ lọc spec/tag của Cucumber lúc khởi động. Cập nhật `board.md` phụ thuộc cấp ticket (018 nay phụ thuộc 019); phụ thuộc cấp user story của US-3.4 không đổi. Không chạm khuôn khổ.
 
@@ -61,7 +64,7 @@ Quy ước đánh mã ghi ở đầu `requirement.md`: NFR-01 đến NFR-09 dùn
 ### CẦN BA LÀM RÕ: Mức bắt buộc của ảnh chụp màn hình ở test case đạt — *đã xử lý*
 Hệ thống chụp một ảnh duy nhất, tại thời điểm bước hỏng của một test case hỏng. Các bước khác không chụp, trừ những bước được đánh dấu tường minh là cần chụp. Test case đạt không có ảnh chụp.
 Thay cho ảnh của các bước trước, mỗi test case có một nhật ký thực thi: các bước đã chạy theo thứ tự, kết quả từng bước, và thông báo lỗi gốc tại bước hỏng.
-Lý do: muốn có ảnh của các bước trước bước hỏng thì buộc phải chụp mọi bước ngay từ đầu, vì lúc chạy chưa biết bước nào sẽ hỏng. Mỗi lần chụp tốn từ vài trăm mili giây tới vài giây, nên chi phí này rơi vào cả các test case đạt và ảnh hưởng trực tiếp SM-02. Nhật ký thực thi cho cùng thông tin điều tra với chi phí thấp hơn nhiều.
+Lý do: muốn có ảnh của các bước trước bước hỏng thì buộc phải chụp mọi bước ngay từ đầu, vì lúc chạy chưa biết bước nào sẽ hỏng. Mỗi lần chụp tốn từ vài trăm mili-giây tới vài giây, nên chi phí này rơi vào cả các test case đạt và ảnh hưởng trực tiếp SM-02. Nhật ký thực thi cho cùng thông tin điều tra với chi phí thấp hơn nhiều.
 Quy tắc đi kèm: lỗi phát sinh khi chụp màn hình hoặc ghi nhật ký không được làm thay đổi trạng thái của test case. Bằng chứng thực thi là thứ phụ trợ, không phải điều đang được kiểm tra.
 Đã phản ánh vào thiết kế: Evidence Collector đổi trách nhiệm (`north-star.md` §2), nguyên tắc "bằng chứng thực thi là thứ phụ trợ" (§2.2), nhật ký thực thi vào hợp đồng dữ liệu (ADR-003), nội dung báo cáo (ADR-006), quy tắc mã (`coding-convention.md`).
 

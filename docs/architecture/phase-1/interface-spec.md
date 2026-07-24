@@ -28,8 +28,9 @@
 
 ### Locator Resolver
 **Mục đích:** điểm duy nhất tìm phần tử; mang tên màn hình phục vụ bằng chứng.
-**Đầu vào / đầu ra:** `find(locator: Locator, screenName: string): Element` — chờ có điều kiện theo `wait-policy`; ném lỗi không tìm thấy khi hết thời gian chờ. `screenName` do Page Object truyền vào; Test Runner ghi nhận làm màn hình hiện tại (ADR-011).
-**Liên quan:** FR-AUTH-03, BR-007, ADR-004, ADR-011.
+**Đầu vào / đầu ra:** `find(locator: Locator, screenName: string): Element` — tìm phần tử qua phiên WebdriverIO toàn cục, chờ có điều kiện theo `wait-policy`; ném lỗi không tìm thấy khi hết thời gian chờ. `screenName` do Page Object truyền vào, đẩy qua sink do Test Runner tiêm lúc mở phiên (ADR-014) — Locator không import Test Runner; Test Runner ghi nhận làm màn hình hiện tại (ADR-011).
+`registerScreenSink(sink: (screenName: string) => void): void` — Test Runner gọi lúc mở phiên để tiêm sink.
+**Liên quan:** FR-AUTH-03, BR-007, ADR-004, ADR-011, ADR-014.
 
 ### Evidence Collector
 **Mục đích:** dựng bằng chứng và đẩy bản ghi.

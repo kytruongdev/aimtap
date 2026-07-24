@@ -68,23 +68,25 @@ Diagram này được cập nhật mỗi khi một quyết định kiến trúc 
 
 | Module | Trách nhiệm (một câu) | Lưu/đọc dữ liệu | Phụ thuộc | Phase |
 |---|---|---|---|---|
-| CLI Entry | Nhận lệnh của QC (chọn ứng dụng, test suite, thiết bị), khởi động một lượt chạy và hiển thị tiến trình. | đọc App Registry | Config, Device & Build Manager, Test Runner | 1 |
+| CLI Entry | Nhận lệnh của QC (chọn ứng dụng, test suite, thiết bị), khởi động một lượt chạy và hiển thị tiến trình. | đọc App Registry | App Registry, Config & Secrets, Device & Build Manager, Test Runner, Reporter, Shared | 1 |
 | App Registry | Giữ khai báo của từng ứng dụng được kiểm thử (định danh, đường dẫn build, thiết bị và phiên bản hệ điều hành đích) dưới dạng dữ liệu khai báo ngoài mã nền tảng. | đọc tệp cấu hình ứng dụng | Shared | 1 |
-| Device & Build Manager | Chuẩn bị thiết bị thật hoặc simulator và cài bản build lên thiết bị trước lượt chạy. | — | Appium, công cụ dòng lệnh của Xcode | 1 |
-| Test Runner | Thực thi các test case được chọn, quản lý vòng đời phiên Appium, phát sự kiện bắt đầu/kết thúc từng test case và từng bước. | — | WebdriverIO, Cucumber, Appium, Evidence Collector | 1 |
-| Locator Resolver | Điểm duy nhất mà mọi Page Object đi qua để tìm một phần tử trên màn hình. | đọc locator từ Page Object | Test Runner (phiên Appium) | 1 |
-| Evidence Collector | Dựng bằng chứng thực thi của mỗi test case: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng. | ghi tệp ảnh, đẩy bản ghi sang Result Store | Result Store | 1 |
-| Result Store | Lưu bản ghi kết quả có cấu trúc của mỗi lượt chạy và mỗi test case trên máy QC. | ghi/đọc SQLite cục bộ | Shared | 1 |
-| Reporter | Sinh báo cáo của một lượt chạy ở định dạng đính được vào Jira. | đọc Result Store và tệp ảnh | Result Store | 1 |
+| Device & Build Manager | Chuẩn bị thiết bị thật hoặc simulator và cài bản build lên thiết bị trước lượt chạy. | — | App Registry (kiểu AppConfig), Appium, công cụ dòng lệnh của Xcode, Shared | 1 |
+| Test Runner | Thực thi các test case được chọn, quản lý vòng đời phiên Appium, phát sự kiện bắt đầu/kết thúc từng test case và từng bước. | — | WebdriverIO, Cucumber, Appium, Device & Build Manager, Locator Resolver, Evidence Collector, Shared | 1 |
+| Locator Resolver | Điểm duy nhất mà mọi Page Object đi qua để tìm một phần tử trên màn hình. | đọc locator từ Page Object | WebdriverIO (phiên toàn cục), Shared | 1 |
+| Evidence Collector | Dựng bằng chứng thực thi của mỗi test case: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng. | ghi tệp ảnh, đẩy bản ghi sang Result Store | Result Store, Shared | 1 |
+| Result Store | Lưu bản ghi kết quả có cấu trúc của mỗi lượt chạy và mỗi test case trên máy QC. | ghi/đọc SQLite cục bộ | better-sqlite3, Shared | 1 |
+| Reporter | Sinh báo cáo của một lượt chạy ở định dạng đính được vào Jira. | đọc Result Store và tệp ảnh | Result Store, công cụ PDF (Puppeteer), Shared | 1 |
 | Config & Secrets | Cung cấp cấu hình vận hành của nền tảng, nạp khóa API và dữ liệu kiểm thử từ nguồn ngoài kho mã. | đọc biến môi trường, tệp cấu hình cục bộ | Shared | 1 |
 | Shared | Cung cấp hạ tầng dùng chung cho mọi module: ghi log có cấu trúc, phân cấp lớp lỗi, kiểu dữ liệu chung. | — | — | 1 |
-| Claude Client | Điểm duy nhất của nền tảng gọi Claude API: quản lý khóa, chọn mô hình, giới hạn số lần gọi, và tắt hoàn toàn bằng cấu hình. | đọc Config & Secrets | Config & Secrets | 2 |
-| Script Generator | Sinh phần mô tả hành vi và phần cài đặt còn thiếu từ mô tả của QC và page source của màn hình đích, dựa trên danh sách step definition hiện có. | đọc step definition hiện có, ghi tệp nháp | Claude Client | 2 |
-| Analytics | Trả lời câu hỏi về xu hướng chất lượng từ dữ liệu kết quả đã tích lũy. | đọc Result Store | Result Store | 3 |
+| Claude Client | Điểm duy nhất của nền tảng gọi Claude API: quản lý khóa, chọn mô hình, giới hạn số lần gọi, và tắt hoàn toàn bằng cấu hình. | đọc Config & Secrets | Config & Secrets, Shared | 2 |
+| Script Generator | Sinh phần mô tả hành vi và phần cài đặt còn thiếu từ mô tả của QC và page source của màn hình đích, dựa trên danh sách step definition hiện có. | đọc step definition hiện có, ghi tệp nháp | Claude Client, Shared | 2 |
+| Analytics | Trả lời câu hỏi về xu hướng chất lượng từ dữ liệu kết quả đã tích lũy. | đọc Result Store | Result Store, Shared | 3 |
 
 Nội dung test của một ứng dụng gồm hai phần: **mô tả hành vi** bằng ngôn ngữ tự nhiên (tệp `.feature`, mỗi tệp là một **test feature** chứa nhiều **test case**) và **cài đặt thực thi** từng câu mô tả (step definition). Cả hai phần, cùng khai báo ứng dụng và Page Object, nằm trong cùng kho mã nhưng ngoài ranh giới nền tảng. Nền tảng không tham chiếu tới bất kỳ định danh, màn hình, hay luồng nghiệp vụ nào của một ứng dụng cụ thể; quan hệ đi một chiều từ nội dung ứng dụng tới nền tảng.
 
 Việc đưa ứng dụng về trạng thái nghiệp vụ mà một test case cần thuộc về chính test case đó, không thuộc nền tảng. Device & Build Manager chỉ chịu trách nhiệm tới mức ứng dụng được cài và sẵn sàng khởi chạy trên thiết bị.
+
+Locator Resolver không phụ thuộc Test Runner: nó dùng phiên WebdriverIO toàn cục để tìm phần tử, và nhận tên màn hình qua một sink do Test Runner tiêm vào lúc mở phiên, không qua import. Nhờ đó quan hệ giữa hai module đi một chiều Test Runner → Locator Resolver, không tạo chu trình (ADR-014).
 
 ### 2.1. Cấu trúc kho mã
 
@@ -219,7 +221,7 @@ Kiểm thử đơn vị của nền tảng đặt cạnh tệp nguồn (`locator
 Ba quy tắc cưỡng chế ranh giới, kiểm tra tự động bằng `eslint-plugin-boundaries`:
 - `src/` không import bất kỳ thứ gì từ `apps/`. Nền tảng nạp nội dung ứng dụng theo quy ước đường dẫn tại thời điểm chạy.
 - `apps/` chỉ import từ `src/index.ts`, không import vào thư mục con nội bộ của một module.
-- Giữa các module trong `src/`, phụ thuộc đi theo đúng cột "Phụ thuộc" ở bảng §2, và mỗi module chỉ import qua `index.ts` của module khác. Không có phụ thuộc vòng.
+- Giữa các module trong `src/`, phụ thuộc đi theo đúng cột "Phụ thuộc" ở bảng §2, và mỗi module chỉ import qua `index.ts` của module khác. Không có phụ thuộc vòng. Shared là kernel nền: mọi module trong `src/` được phép import Shared. Locator Resolver không import Test Runner — tên màn hình được chuyển qua sink do Test Runner tiêm lúc mở phiên (ADR-014).
 
 Trong `apps/<app-id>/`, luồng phụ thuộc đi một chiều: `features/` → `steps/` → `screens/`. Tệp `.feature` không chứa mã; `screens/` không tham chiếu ngược lên `steps/`.
 
@@ -294,6 +296,10 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Thư viện nền, công cụ chạy, và cách đồng bộ môi trường máy QC. | [ADR-008](adr/adr-008.md) |
 | Lưu dữ liệu kiểm thử và bí mật ngoài kho mã theo từng ứng dụng. | [ADR-009](adr/adr-009.md) |
 | Kiểm tra thiết bị sẵn sàng giữa lượt chạy. | [ADR-010](adr/adr-010.md) |
+| Nguồn của trường tên màn hình: Page Object đang thao tác. | [ADR-011](adr/adr-011.md) |
+| Công cụ sinh báo cáo PNG/PDF không giao diện. | [ADR-012](adr/adr-012.md) |
+| Mô hình thực thi Test Runner trên WebdriverIO/Cucumber. | [ADR-013](adr/adr-013.md) |
+| Locator Resolver không phụ thuộc Test Runner; phá chu trình bằng sink tiêm và phiên WebdriverIO toàn cục. | [ADR-014](adr/adr-014.md) |
 
 ---
 

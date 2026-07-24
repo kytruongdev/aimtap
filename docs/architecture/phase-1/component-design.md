@@ -1,6 +1,6 @@
 # Component Design — Phase 1
 
-Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF), ADR-013 (mô hình thực thi Test Runner).
+Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF), ADR-013 (mô hình thực thi Test Runner), ADR-014 (Locator Resolver không phụ thuộc Test Runner).
 
 Danh sách tệp dưới mỗi module là tệp đại diện, không phải danh sách đầy đủ; việc chia hàm/tệp cấp ticket thuộc Team Lead.
 
@@ -13,7 +13,7 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 - `commands/report.ts` — lệnh `aimtap report <run-id>`: gọi Reporter sinh lại báo cáo từ dữ liệu đã lưu, không chạy lại test case.
 - `commands/doctor.ts` — lệnh `aimtap doctor`: gọi `environment-check` của Device & Build Manager.
 - `progress-view.ts` — hiển thị test case đang chạy kèm test feature, số đã hoàn tất trên tổng, trạng thái từng test case (FR-RUN-03, US-10).
-**Phụ thuộc:** Config & Secrets, Device & Build Manager, Test Runner.
+**Phụ thuộc:** App Registry, Config & Secrets, Device & Build Manager, Test Runner, Reporter, Shared.
 **Requirement liên quan:** FR-RUN-01, FR-RUN-02, FR-RUN-03, UC-06.
 
 ## App Registry
@@ -39,26 +39,26 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 - `device-manager.ts` — hợp đồng chung: `prepareDevice`, `installBuild`, `ensureReadyBeforeRun` (FR-DEV-02, đầy đủ ở tầng hệ điều hành), `probeDuringRun` (ADR-010, probe nhẹ trên phiên).
 - `simulator-driver.ts` / `real-device-driver.ts` — cài đặt cho hai loại thiết bị qua `simctl` và công cụ thiết bị thật.
 - `environment-check.ts` — kiểm tra Node, Xcode, Appium, thiết bị khả dụng, bản build tồn tại; dùng chung với `doctor` và với bước tiền điều kiện.
-**Phụ thuộc:** Appium, công cụ dòng lệnh của Xcode, Shared.
+**Phụ thuộc:** App Registry (kiểu `AppConfig`), Appium, công cụ dòng lệnh của Xcode, Shared.
 **Requirement liên quan:** FR-DEV-01→04, FR-EXEC-01, BR-015, BR-018, UC-05.
 
 ## Test Runner
 **Trách nhiệm:** Thực thi test case được chọn, quản lý vòng đời phiên Appium, phát sự kiện bước/test case, điều phối probe thiết bị và điều kiện dừng. WebdriverIO/Cucumber điều khiển việc lặp qua test case; nền tảng phản ứng qua hook vòng đời (ADR-013).
 **Cấu trúc bên trong:**
 - `run-session.ts` — trạng thái và điều phối một lượt chạy trong tiến trình worker: sinh `run-id`, giữ trạng thái tổng hợp và cờ dừng, quyết định khi probe trả `unavailable` hoặc khi QC hủy. `saveRunStart` chạy ở hook `before`, `finalizeRun` (trạng thái tổng hợp, BR-011) ở hook `after` (ADR-013). Không tự lặp qua test case.
-- `cucumber-hooks.ts` — handler vòng đời: `beforeScenario` gọi `probeDuringRun` (ADR-010); nếu cờ dừng đã bật hoặc probe trả `unavailable` thì bỏ qua test case và không sinh bản ghi (BR-012, BR-018). Test case `failed` không bật cờ dừng (BR-002). `beforeStep`/`afterStep`/`afterScenario` chuyển sự kiện tới Evidence Collector; giữ "màn hình hiện tại" (ADR-011).
+- `cucumber-hooks.ts` — handler vòng đời: `beforeScenario` gọi `probeDuringRun` (ADR-010); nếu cờ dừng đã bật hoặc probe trả `unavailable` thì bỏ qua test case và không sinh bản ghi (BR-012, BR-018). Test case `failed` không bật cờ dừng (BR-002). `beforeStep`/`afterStep`/`afterScenario` chuyển sự kiện tới Evidence Collector. Tiêm sink tên màn hình vào Locator Resolver lúc mở phiên (ADR-014) và giữ "màn hình hiện tại" (ADR-011).
 - `wdio-service.ts` — gắn nền tảng vào WebdriverIO testrunner; đăng ký các hook trên và mở phiên Appium một lần cho mỗi lượt chạy.
 - Hủy bởi QC: bắt tín hiệu ngắt (SIGINT) trong worker, bật cờ dừng với `stop_reason = cancelled_by_qc`; test case còn lại bị bỏ qua, `finalizeRun` đánh dấu `incomplete` (ADR-013).
-**Phụ thuộc:** WebdriverIO, Cucumber, Appium, Device & Build Manager, Evidence Collector, Locator Resolver.
+**Phụ thuộc:** WebdriverIO, Cucumber, Appium, Device & Build Manager, Locator Resolver, Evidence Collector, Shared.
 **Requirement liên quan:** FR-RUN-01→06, FR-EXEC-01, FR-EXEC-07, UC-06, UC-07.
 
 ## Locator Resolver
 **Trách nhiệm:** Điểm duy nhất tìm phần tử; điểm chèn self-healing của Phase 2 (ADR-004).
 **Cấu trúc bên trong:**
-- `locator-resolver.ts` — `find(locator, screenName)`: Phase 1 gọi thẳng WebdriverIO qua `wait-policy`, trả phần tử hoặc ném lỗi không tìm thấy; nhận tên màn hình do Page Object truyền để chuyển tới Test Runner (ADR-011).
+- `locator-resolver.ts` — `find(locator, screenName)`: Phase 1 tìm phần tử qua phiên WebdriverIO toàn cục theo `wait-policy`, trả phần tử hoặc ném lỗi không tìm thấy. `screenName` do Page Object truyền vào; đẩy tới sink do Test Runner tiêm lúc mở phiên (ADR-014), không import Test Runner (ADR-011).
 - `locator.ts` — kiểu Locator và các chiến lược iOS (accessibility id, id, predicate string, class chain).
 - `wait-policy.ts` — thời gian chờ có điều kiện tập trung, dùng cho cả tìm phần tử và probe thiết bị.
-**Phụ thuộc:** Test Runner (phiên Appium).
+**Phụ thuộc:** WebdriverIO (phiên toàn cục), Shared.
 **Requirement liên quan:** FR-AUTH-02, FR-AUTH-03, BR-007, UC-02.
 
 ## Evidence Collector
