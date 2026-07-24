@@ -12,8 +12,32 @@ export function registerSecretPaths(paths: readonly string[]): void {
   for (const path of paths) secretPaths.add(path);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value) as object | null;
+  return proto === Object.prototype || proto === null;
+}
+
+// Deep-copy only plain objects and arrays so redaction can traverse them; keep every other value
+// (Error, function, class instance, Buffer, …) by reference. Unlike structuredClone, this never
+// throws on non-cloneable values — and AppFailure/PlatformFailure (Error instances) are logged often.
+function safeClone(value: unknown, seen: Set<object>): unknown {
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+    const copy = value.map((item) => safeClone(item, seen));
+    seen.delete(value);
+    return copy;
+  }
+  if (!isPlainObject(value)) return value;
+  if (seen.has(value)) return '[Circular]';
+  seen.add(value);
+  const copy: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    copy[key] = safeClone(item, seen);
+  }
+  seen.delete(value);
+  return copy;
 }
 
 function redactAtPath(target: Record<string, unknown>, segments: readonly string[]): void {
@@ -27,14 +51,14 @@ function redactAtPath(target: Record<string, unknown>, segments: readonly string
       continue;
     }
     const child = target[key];
-    if (isRecord(child)) redactAtPath(child, rest);
+    if (isPlainObject(child)) redactAtPath(child, rest);
   }
 }
 
 /** Return a copy of `object` with every registered secret path censored. Exported for unit tests. */
 export function redactObject(object: Record<string, unknown>): Record<string, unknown> {
   if (secretPaths.size === 0) return object;
-  const clone = structuredClone(object) as Record<string, unknown>;
+  const clone = safeClone(object, new Set<object>()) as Record<string, unknown>;
   for (const path of secretPaths) {
     redactAtPath(clone, path.split('.'));
   }
