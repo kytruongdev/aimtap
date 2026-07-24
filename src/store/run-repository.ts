@@ -1,4 +1,4 @@
-import type { DeviceType } from '../shared/index.js';
+import { PlatformFailure, type DeviceType } from '../shared/index.js';
 import type { Db } from './database.js';
 import type {
   AggregateResult,
@@ -13,10 +13,10 @@ import type {
 
 // Append-only access to the results database. Result records (TestCaseResult, StepLog) are
 // insert-only and a new run never overwrites another run's data (FR-DATA-05, BR-009). The one
-// mutation is finalizeRun, which completes the run's OWN summary row: the Run is inserted at open
-// with completion='incomplete' (so TestCaseResult foreign keys resolve while the run is in progress),
-// then finalized with its aggregate at close. A run interrupted before finalize stays 'incomplete'
-// with its already-written test cases intact (BR-012).
+// mutation is finalizeRun, which completes the run's OWN summary row exactly once: the Run is
+// inserted at open with completion='incomplete' (so TestCaseResult foreign keys resolve while the
+// run is in progress), then finalized at close. A run interrupted before finalize stays
+// 'incomplete' with its already-written test cases intact (BR-012).
 
 export interface RunStart {
   run_id: string;
@@ -57,6 +57,8 @@ export function createRunRepository(db: Db): RunRepository {
         'incomplete', @scope_kind, @scope_criteria, @schema_version)`,
   );
 
+  // ended_at IS NULL marks a run that has not been finalized yet, so a second finalize is a no-op
+  // at SQL level and is turned into an explicit failure below.
   const finalizeRunStmt = db.prepare(
     `UPDATE run SET
        ended_at = @ended_at,
@@ -65,7 +67,7 @@ export function createRunRepository(db: Db): RunRepository {
        aggregate_result = @aggregate_result,
        not_run_count = @not_run_count,
        stop_reason = @stop_reason
-     WHERE run_id = @run_id`,
+     WHERE run_id = @run_id AND ended_at IS NULL`,
   );
 
   const countFailing = db.prepare(
@@ -116,7 +118,17 @@ export function createRunRepository(db: Db): RunRepository {
     finalizeRun(summary) {
       const failing = countFailing.get(summary.run_id) as { n: number };
       const aggregate_result: AggregateResult = failing.n > 0 ? 'failed' : 'passed';
-      finalizeRunStmt.run({ ...summary, aggregate_result });
+      const outcome = finalizeRunStmt.run({ ...summary, aggregate_result });
+
+      if (outcome.changes === 0) {
+        const known = selectRun.get(summary.run_id) !== undefined;
+        throw new PlatformFailure(
+          known
+            ? `Run ${summary.run_id} is already finalized`
+            : `Run ${summary.run_id} does not exist`,
+          { run_id: summary.run_id },
+        );
+      }
     },
 
     saveTestCaseResult(result, steps) {
