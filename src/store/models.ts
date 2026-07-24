@@ -1,7 +1,7 @@
 import type { DeviceType, RunId } from '../shared/index.js';
 
 // Result record types — one row shape per ERD entity (erd.md). Field names stay snake_case to match
-// the SQLite columns and the JSON data contract (interface-spec.md §Hợp đồng dữ liệu).
+// the SQLite columns and the JSON data contract in interface-spec.md.
 
 /** Schema version stamped onto every Run written by this build (erd.md Run.schema_version). */
 export const SCHEMA_VERSION = 1;
@@ -60,7 +60,7 @@ export interface StepLog {
   screenshot_path: string | null;
 }
 
-/** Full result model of one run, assembled for the Reporter (interface-spec.md #Result-Store). */
+/** Full result model of one run, assembled for the Reporter (interface-spec.md, Result Store). */
 export interface RunModel {
   run: Run;
   results: TestCaseResult[];
