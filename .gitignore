@@ -1,9 +1,22 @@
 .idea
 .claude
 CLAUDE.md
+.vscode/
 
 # macOS
 .DS_Store
 
 # Node / build
 node_modules/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+.eslintcache
+
+# Runtime output — not shared between QC machines (AS-04)
+output/
+
+# Secrets — never commit real values
+.env.local
+apps/*/test-data.local.json
