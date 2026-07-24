@@ -42,12 +42,13 @@ Lỗi chụp ảnh/ghi nhật ký được bắt tại đây, đánh dấu `evid
 **Liên quan:** FR-EXEC-03→06, FR-EXEC-10, UC-07.
 
 ### Result Store (repository)
-**Mục đích:** ghi/đọc dữ liệu kết quả, chỉ chèn thêm.
+**Mục đích:** ghi/đọc dữ liệu kết quả; bản ghi kết quả bất biến.
 **Đầu vào / đầu ra:**
-- `saveRunStart(run): void` / `finalizeRun(run): void` — ghi bối cảnh lúc mở và trạng thái tổng hợp lúc đóng.
+- `saveRunStart(run): void` — chèn hàng Run lúc mở với `completion = incomplete`, để khóa ngoại của TestCaseResult phân giải được trong lúc lượt chạy diễn ra.
+- `finalizeRun(summary): void` — hoàn tất **một lần** hàng tổng hợp của chính lượt chạy đó: thời điểm kết thúc, tổng thời lượng, `completion`, `aggregate_result`, `not_run_count`, `stop_reason`.
 - `saveTestCaseResult(result, steps[]): void` — một giao dịch cho mỗi test case (ADR-003).
 - `getRunModel(runId): { run; results[]; steps[] }` — cho Reporter.
-Không có thao tác cập nhật hay xóa (FR-DATA-05).
+Bản ghi kết quả (TestCaseResult, StepLog) chỉ chèn thêm; một lượt chạy mới không ghi đè hay xóa dữ liệu của lượt chạy trước (FR-DATA-05, BR-009). Chỗ ghi lại duy nhất là `finalizeRun` hoàn tất hàng tổng hợp của chính lượt chạy đang đóng.
 **Liên quan:** FR-DATA-01→05, BR-009.
 
 ### Reporter
