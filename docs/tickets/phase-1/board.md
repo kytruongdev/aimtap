@@ -61,7 +61,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 
 | User story | Phụ thuộc | Song song với | Trạng thái |
 |---|---|---|---|
-| US-1.1 | — | — | Todo |
+| US-1.1 | — | — | Done |
 | US-5.1 | US-1.1 | hầu hết | Todo |
 | US-1.2 | US-1.1 | US-1.3, US-1.4, US-2.1, US-2.2, US-3.3 | Todo |
 | US-1.3 | US-1.1 | US-1.2, US-1.4, US-2.1, US-2.2, US-3.3 | Todo |
@@ -74,7 +74,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 | US-3.2 | US-2.1, US-3.1 | — | Todo |
 | US-4.1 | US-1.4 | US-3.1, US-4.2 | Todo |
 | US-4.2 | US-1.1, US-3.1 | US-4.1 | Todo |
-| US-3.4 | US-1.4, US-2.3, US-3.1, US-3.2, US-3.3 | — | Todo |
+| US-3.4 | US-1.4, US-2.1, US-2.3, US-3.1, US-3.2, US-3.3 | — | Todo |
 | US-4.3 | US-1.2, US-1.3, US-3.1, US-3.4, US-4.1, US-4.2 | — | Todo |
 | US-4.4 | US-4.1, US-4.2 | — | Todo |
 | US-5.2 | US-1.3, US-2.1, US-3.3 (chạy được cần US-4.3) | — | Todo |
@@ -111,7 +111,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 | 010 | US-3.2 | 009, 011 |
 | 017 | US-3.3 | 001, 002 |
 | 019 | US-3.4 | 007, 009 |
-| 018 | US-3.4 | 010, 016, 017, 019 |
+| 018 | US-3.4 | 010, 012, 016, 017, 019 |
 | 024 | US-4.1 | 007 |
 | 025 | US-4.1 | 024 |
 | 020 | US-4.2 | 001, 008 |
@@ -124,10 +124,11 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 ## Ghi chú
 
 - Không có phụ thuộc vòng ở cả cấp user story lẫn cấp ticket; phụ thuộc đi xuôi theo cột "Phụ thuộc" của `north-star.md` §2.
-- Theo ADR-013, Test Runner phản ứng qua hook (framework điều khiển vòng lặp). Trong US-3.4, TICKET-018 (cucumber-hooks: probe + bỏ qua theo cờ dừng + chuyển sự kiện bằng chứng) đọc/ghi trạng thái và cờ dừng do TICKET-019 (run-session) giữ, nên 018 phụ thuộc 019 (đảo so với bản trước). Cả hai cùng US-3.4/một PR nên thứ tự nội bộ này không đổi phụ thuộc cấp user story.
+- Theo ADR-013, Test Runner phản ứng qua hook (framework điều khiển vòng lặp). Trong US-3.4, TICKET-018 (cucumber-hooks) đọc/ghi trạng thái và cờ dừng do TICKET-019 (run-session) giữ, nên 018 phụ thuộc 019.
+- Theo ADR-014, Test Runner tiêm sink tên màn hình vào Locator Resolver lúc mở phiên (quan hệ một chiều Test Runner → Locator, phá chu trình). Vì vậy TICKET-018 phụ thuộc TICKET-012 (`registerScreenSink`), và US-3.4 phụ thuộc US-2.1. Thứ tự thực thi không đổi vì US-2.1 vốn nằm ở làn song song sớm, trước US-3.4.
 - US-4.3 phụ thuộc US-4.1 vì cuối một lượt chạy `run` tự sinh báo cáo (UC-06 bước 7, sequence-diagram §3). Muốn ship `run` trước Reporter thì tách phần tự sinh báo cáo thành bước tùy chọn và bỏ phụ thuộc này — một đánh đổi, hỏi product owner trước khi làm.
 - US-5.2 (thí điểm) khai báo phụ thuộc kỹ thuật US-1.3/2.1/3.3 để viết được nội dung; để **chạy** đầu-cuối cần luồng `run` ở US-4.3 nên xếp cuối.
 
 ## Điểm đã đẩy về SA/BA
 
-Không có. Toàn bộ epic/user story/ticket cụ thể hóa được trong khuôn khổ thiết kế Phase 1 hiện có, không có quyết định chạm khuôn khổ.
+Không có mục đang mở. Mục "Ma trận phụ thuộc module Phase 1" (chu trình Test Runner ↔ Locator) đã được SA giải bằng ADR-014 (Accepted) và đồng bộ vào các ticket.
