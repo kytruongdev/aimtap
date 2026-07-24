@@ -1,3 +1,11 @@
-// Device & Build Manager — environment check, device readiness, build install, run probe.
-// Implemented in US-3.1 (TICKET-008, TICKET-009) and US-3.2 (TICKET-010).
-export {};
+// Device & Build Manager - environment check, device readiness, build install, run probe.
+// TICKET-008: environment check. TICKET-009 adds device preparation and build install.
+export { checkEnvironment, assertEnvironmentReady } from './environment-check.js';
+export type {
+  AppEnvironmentTarget,
+  CheckStatus,
+  EnvironmentCheckItem,
+  EnvironmentProbes,
+  EnvironmentReport,
+} from './environment-check.js';
+export { createSystemProbes } from './system-probes.js';
