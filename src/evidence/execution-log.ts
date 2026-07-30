@@ -4,12 +4,12 @@
 // records into StepLog rows when it persists the test case.
 
 export interface StepRecord {
-  step_order: number;
-  step_text: string;
-  result: 'passed' | 'failed';
-  duration_ms: number;
-  error_message: string | null;
-  screenshot_path: string | null;
+  readonly step_order: number;
+  readonly step_text: string;
+  readonly result: 'passed' | 'failed';
+  readonly duration_ms: number;
+  readonly error_message: string | null;
+  readonly screenshot_path: string | null;
 }
 
 export interface StepInput {
@@ -23,7 +23,7 @@ export interface StepInput {
 export interface ExecutionLog {
   /** Append a step; its order is assigned from the sequence in which steps are recorded. */
   record(step: StepInput): void;
-  /** The steps recorded so far, in order. Returns a copy. */
+  /** The steps recorded so far, in order. Returns a copy; records are readonly. */
   steps(): StepRecord[];
 }
 

@@ -96,6 +96,7 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 **Cấu trúc bên trong:**
 - `logger.ts` — log có cấu trúc (Pino), gắn `run-id`, che trường bí mật.
 - `errors.ts` — `AppFailure` (mang `kind`: `step_execution` mặc định | `assertion` — ADR-016) và `PlatformFailure`.
+- `assertion.ts` — cơ chế khẳng định của nền tảng: bọc lệnh khẳng định của step definition, ném lỗi khẳng định thành `AppFailure` với `kind = assertion` để `failure-classifier` ánh xạ ra `wrong_conclusion` (ADR-016). Mặt ghi đối xứng với `failure-classifier` (mặt đọc); chỉ phụ thuộc `errors.ts`.
 - `wait-policy.ts` — tham số thời gian chờ có điều kiện tập trung (`timeoutMs`/`intervalMs`/`retries`) và `withRetries`; dùng chung cho `find` (Locator Resolver) và probe thiết bị (Device & Build Manager) (ADR-010, ADR-015).
 - `types.ts` — kiểu dùng chung.
 **Phụ thuộc:** —

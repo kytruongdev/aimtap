@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { assertExpectation } from './assertion.js';
-import { AppFailure, isAppFailure } from './errors.js';
+import { AppFailure, PlatformFailure, isAppFailure } from './errors.js';
 
 describe('assertExpectation', () => {
   it('passes silently when the assertion holds', async () => {
@@ -30,6 +30,19 @@ describe('assertExpectation', () => {
     } catch (error) {
       expect(error).toBe(original);
       expect((error as AppFailure).kind).toBe('step_execution');
+    }
+  });
+
+  it('passes a PlatformFailure through unchanged, never rewrapping it as an assertion', async () => {
+    const original = new PlatformFailure('session gone');
+    try {
+      await assertExpectation(() => {
+        throw original;
+      });
+      throw new Error('expected assertExpectation to throw');
+    } catch (error) {
+      expect(error).toBe(original);
+      expect(isAppFailure(error)).toBe(false);
     }
   });
 });

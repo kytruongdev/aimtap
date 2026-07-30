@@ -1,11 +1,12 @@
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { logger } from '../shared/index.js';
 
 // Captures a screenshot at the failing step and at steps explicitly marked for capture (BR-003),
 // writing it under output/<app-id>/screenshots/<run-id>/. Evidence is auxiliary, never the thing
 // under test: a capture or write failure is reported as missing evidence and never thrown (BR-004),
-// so it cannot change the test case status. The write is off the step's wait path.
+// so it cannot change the test case status. The write is off the step's wait path and uses async
+// fs so it does not block the event loop (NFR-10).
 
 /** The screenshot source. In a run this is the WebdriverIO browser; a fake is used in unit tests. */
 export interface Screenshotter {
@@ -44,10 +45,10 @@ export async function captureScreenshot(
 
     const outputDir = target.outputDir ?? defaultOutputDir();
     const runDir = path.join(outputDir, target.appId, 'screenshots', target.runId);
-    fs.mkdirSync(runDir, { recursive: true });
+    await fs.mkdir(runDir, { recursive: true });
 
     const fileName = `${safeName(target.name)}.png`;
-    fs.writeFileSync(path.join(runDir, fileName), Buffer.from(base64, 'base64'));
+    await fs.writeFile(path.join(runDir, fileName), Buffer.from(base64, 'base64'));
 
     return { path: path.join('screenshots', target.runId, fileName), missing: false };
   } catch (error) {
