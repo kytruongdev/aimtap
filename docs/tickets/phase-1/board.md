@@ -4,7 +4,7 @@ Phân cấp: **Epic → User Story → Ticket** (`conventions.md`). Mỗi user s
 
 Chẻ theo Phương án A (lát mỏng theo module): 5 epic → 17 user story → 27 ticket, phủ US-01→US-20 (BA).
 
-**Tiến độ (2026-07-30):** 6/17 user story (10/27 ticket) đã merge vào master — US-1.1, US-1.3, US-1.4, US-3.1, US-2.1, US-3.2. US-2.2 (TICKET-013/014/015) hiện thực xong trên branch `us/2-2-evidence-blocks`, đã qua SA review, chờ merge.
+**Tiến độ (2026-07-30):** 8/17 user story (14/27 ticket) đã merge vào master — US-1.1, US-1.3, US-1.4, US-3.1, US-2.1, US-3.2, US-2.2, US-2.3. EPIC-2 (tương tác phần tử & bằng chứng) hoàn tất. US-3.3 (TICKET-017) đang làm.
 
 ---
 
@@ -69,9 +69,9 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 | US-1.3 | US-1.1 | US-1.2, US-1.4, US-2.1, US-2.2, US-3.3 | **Done** |
 | US-1.4 | US-1.1 | US-1.2, US-1.3, US-2.1, US-2.2, US-3.3 | **Done** |
 | US-2.1 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.2, US-3.3 | **Done** |
-| US-2.2 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.1, US-3.3 | Chờ merge (SA review xong) |
-| US-3.3 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.1, US-2.2 | Todo |
-| US-2.3 | US-1.4, US-2.2 | US-3.1 | Todo |
+| US-2.2 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.1, US-3.3 | **Done** |
+| US-3.3 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.1, US-2.2 | In progress |
+| US-2.3 | US-1.4, US-2.2 | US-3.1 | **Done** |
 | US-3.1 | US-1.1, US-1.3 | US-2.3, US-4.1 | **Done** |
 | US-3.2 | US-2.1, US-3.1 | — | **Done** |
 | US-4.1 | US-1.4 | US-3.1, US-4.2 | Todo |
@@ -90,6 +90,8 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 6. US-3.4 — điểm hội tụ tích hợp.
 7. US-4.3 (`run`) và US-4.4 (`report`).
 8. US-5.2 — thí điểm, nghiệm thu đầu-cuối.
+
+**Còn lại:** US-3.3 (đang làm); Todo — US-5.1, US-1.2, US-4.1, US-3.4, US-4.3, US-4.4, US-5.2. Sẵn sàng làm ngay (deps đã merge): US-5.1, US-1.2, US-4.1. US-4.2 chờ chốt thư viện CLI. US-3.4 đủ dep khi US-3.3 merge.
 
 ## Phụ thuộc cấp ticket (trong và giữa user story)
 
@@ -128,6 +130,9 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 - Không có phụ thuộc vòng ở cả cấp user story lẫn cấp ticket; phụ thuộc đi xuôi theo cột "Phụ thuộc" của `north-star.md` §2.
 - **ADR-015:** `wait-policy` chuyển từ `locator/` sang `shared/` (hạ tầng cắt ngang, dùng chung cho `find` và probe). Không thêm cạnh đồ thị. TICKET-010 (US-3.2) import `wait-policy` từ `shared`, không đụng `locator`.
 - **ADR-016:** `AppFailure` mang `kind` (`step_execution` mặc định / `assertion`) để `failure-classifier` (TICKET-015) phân `failure_type` không cần match chuỗi. Cơ chế khẳng định nền tảng `assertExpectation` (`shared/assertion.ts`) gắn `kind = 'assertion'`; `PlatformFailure` đi qua nguyên trạng, không thành test case hỏng.
+- **Chữ ký async Evidence Collector (US-2.3):** `onStepEnd(): void` (kích hoạt chụp, giữ promise), `onScenarioEnd(): Promise<TestCaseResult>` (await ảnh rồi lưu một giao dịch); SA duyệt, đã đồng bộ `interface-spec.md` §Evidence Collector và `sequence-diagrams.md` §2. TICKET-018 (US-3.4) `await onScenarioEnd` ở hook `afterScenario`.
+- **US-3.3 (TICKET-017):** capabilities đọc giá trị theo lượt chạy từ biến môi trường `AIMTAP_*` (device, app build, ký mã, endpoint Appium); `cucumberOpts.timeout` lấy từ `wait-policy` (ADR-015); `ignoreUndefinedDefinitions:false` để câu thiếu step definition làm dừng. Hook vòng đời Cucumber ở US-3.4.
+- **Kiểm hiện diện `AIMTAP_*` (review US-3.3, 2026-07-30):** hành vi US-3.3 giữ nguyên (mặc định env thiếu thành chuỗi rỗng — đúng ở tầng này theo ADR-014, không sửa TICKET-017). Việc kiểm sự hiện diện các biến này trước khi mở phiên Appium đặt ở US-3.4 (TICKET-018): dựng capability env từ `DeviceContext` đã validate (FR-DEV-02) làm nguồn duy nhất, thiếu khóa bắt buộc theo `CapabilityKind` thì ném `PlatformFailure` liệt kê khóa thiếu, dừng lượt chạy sớm (ADR-009), không thành test case hỏng (ADR-016). US-1.2 (TICKET-003) ghi rõ `AIMTAP_*` không vào schema tĩnh. Điểm wiring cấp ticket, không chạm khuôn khổ.
 - Theo ADR-013, Test Runner phản ứng qua hook (framework điều khiển vòng lặp). Trong US-3.4, TICKET-018 (cucumber-hooks) đọc/ghi trạng thái và cờ dừng do TICKET-019 (run-session) giữ, nên 018 phụ thuộc 019.
 - Theo ADR-014, Test Runner tiêm sink tên màn hình vào Locator Resolver lúc mở phiên (quan hệ một chiều Test Runner → Locator, phá chu trình). Vì vậy TICKET-018 phụ thuộc TICKET-012 (`registerScreenSink`), và US-3.4 phụ thuộc US-2.1.
 - US-4.3 phụ thuộc US-4.1 vì cuối một lượt chạy `run` tự sinh báo cáo (UC-06 bước 7, sequence-diagram §3).
@@ -135,4 +140,4 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 
 ## Điểm đã đẩy về SA/BA
 
-Không có mục đang mở (`open-items.md` "Đang mở" trống). Các mục đã giải: ma trận phụ thuộc (ADR-014), mô hình Test Runner (ADR-013), vị trí wait-policy (ADR-015), discriminant loại lỗi (ADR-016). Còn treo — quyết định thư viện CLI (Product Owner/SA), cần trước US-4.2.
+Không có mục đang mở (`open-items.md` "Đang mở" trống). Các mục đã giải: ma trận phụ thuộc (ADR-014), mô hình Test Runner (ADR-013), vị trí wait-policy (ADR-015), discriminant loại lỗi (ADR-016), chữ ký async Evidence Collector (interface-spec §Evidence Collector), kiểm hiện diện `AIMTAP_*` (đặt ở US-3.4 TICKET-018, không sửa US-3.3). Còn treo — quyết định thư viện CLI (Product Owner/SA), cần trước US-4.2.

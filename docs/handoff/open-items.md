@@ -14,6 +14,9 @@ Không có mục đang mở.
 
 ## Đã xử lý
 
+### CẦN TEAM-LEAD LÀM: Kiểm tra sự hiện diện `AIMTAP_*` trước khi mở phiên (phát hiện lúc review US-3.3) — *đã xử lý*
+Hành vi US-3.3 giữ nguyên: `iosCapabilities` (`src/runner/wdio-service.ts`) mặc định env thiếu thành chuỗi rỗng là đúng ở tầng này vì US-3.3 cố ý không phụ thuộc build-time vào Config/Device/CLI (ADR-014). Không sửa TICKET-017. Việc kiểm tra sự hiện diện `AIMTAP_*` là điểm wiring cấp ticket, đặt ở US-3.4 (TICKET-018): trước khi phiên Appium mở, dựng biến môi trường capability từ `DeviceContext` đã validate (FR-DEV-02) làm nguồn duy nhất, kiểm tra mọi khóa bắt buộc theo `CapabilityKind`, thiếu thì ném `PlatformFailure` liệt kê khóa thiếu và dừng lượt chạy sớm (ADR-009), không thành test case hỏng (ADR-016) — kèm acceptance criteria. Ghi chú giới hạn phạm vi ở US-1.2 (TICKET-003): `AIMTAP_*` giá trị theo lượt chạy không vào schema tĩnh của Config & Secrets. Điểm đặt chính xác bước dựng/kiểm trong luồng khởi động testrunner là điểm kiểm chứng lúc implement; nếu buộc phải đổi cách CLI ↔ testrunner truyền biến môi trường giữa hai tiến trình thì đẩy về SA. Không chạm khuôn khổ.
+
 ### CẦN SA LÀM RÕ: Chữ ký async của Evidence Collector (`onScenarioEnd`) — *đã xử lý*
 Duyệt chữ ký async theo phương án Team Lead đề xuất, là hợp đồng interface (không cần ADR mới; khớp NFR-10, ghi giao dịch, ADR-013). Đã đồng bộ `interface-spec.md` §Evidence Collector và `sequence-diagrams.md` §2:
 - `onStepEnd(step): void` — đồng bộ; khi bước hỏng **hoặc bước đánh dấu chụp** (BR-003) thì kích hoạt chụp ảnh và giữ promise chụp đang chờ, ngoài đường chờ của bước (NFR-10).
