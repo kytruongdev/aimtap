@@ -9,4 +9,13 @@ export type { FailureContext } from './errors.js';
 
 export { logger, loggerForRun, registerSecretPaths, redactObject } from './logger.js';
 
+export {
+  DEFAULT_WAIT_POLICY,
+  configureWaitPolicy,
+  getWaitPolicy,
+  resetWaitPolicy,
+  withRetries,
+} from './wait-policy.js';
+export type { WaitPolicy } from './wait-policy.js';
+
 export type { DeviceType, RunId } from './types.js';

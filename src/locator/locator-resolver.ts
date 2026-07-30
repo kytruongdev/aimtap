@@ -1,11 +1,11 @@
 import { $ } from '@wdio/globals';
-import { AppFailure, logger } from '../shared/index.js';
+import { AppFailure, getWaitPolicy, logger } from '../shared/index.js';
 import { describeLocator, toSelector, type Locator } from './locator.js';
-import { getWaitPolicy } from './wait-policy.js';
 
 // The single point where the platform finds an element, and the Phase 2 self-healing insertion
 // point (ADR-004). The resolver reads the global WebdriverIO session and never imports the Test
 // Runner; the screen name travels through a sink the Test Runner injects at session open (ADR-014).
+// The shared wait policy lives in Shared (ADR-015).
 
 export type Element = Awaited<ReturnType<typeof $>>;
 

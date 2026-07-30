@@ -1,6 +1,8 @@
-// The single place that defines how long the platform waits and how often it retries.
-// Used by the Locator Resolver when finding elements and by the device probe (ADR-010), so both
-// behave consistently. Fixed sleeps are never used (north-star.md §2.2, stability principles).
+// Cross-cutting wait/retry infrastructure (ADR-015). Lives in Shared so both the Locator Resolver
+// (element lookup) and the Device & Build Manager (device probe, ADR-010) wait the same way without
+// depending on each other. The `current` policy is process configuration set once at startup, the
+// same shape as the logger's secret list - not run lifecycle state. Fixed sleeps are never used
+// (north-star.md §2.2, stability principles).
 
 export interface WaitPolicy {
   /** Maximum time to wait for a condition to become true. */
