@@ -8,7 +8,8 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
-*(không có)*
+### CẦN TEAM-LEAD LÀM: Áp discriminant loại lỗi (ADR-016) vào failure-classifier khi làm US-2.2 (TICKET-015)
+Chốt ở ADR-016: `AppFailure` mang `kind: 'step_execution' | 'assertion'`, mặc định `step_execution`. Khi hiện thực US-2.2: (a) thêm trường `kind` vào `AppFailure` ở `src/shared/errors.ts` (mặc định `step_execution`, bộ phân biệt kiểu giữ nguyên); (b) `failure-classifier` ánh xạ `assertion → wrong_conclusion`, `step_execution` và lỗi lạ không thuộc `AppFailure`/`PlatformFailure` → `step_not_executed`, luôn giữ `error_message` gốc, `PlatformFailure` không ghi thành test case hỏng; (c) cung cấp cơ chế khẳng định của nền tảng để step definition ném `AppFailure` với `kind = 'assertion'`. `find` (US-2.1, đã merge) đã phù hợp nhờ mặc định — không sửa. Chi tiết ở `adr/adr-016.md`, `component-design.md` §Evidence Collector/§Shared. Không chạm khuôn khổ ngoài phần đã chốt.
 
 ---
 

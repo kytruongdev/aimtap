@@ -5,7 +5,9 @@ export {
   isAppFailure,
   isPlatformFailure,
 } from './errors.js';
-export type { FailureContext } from './errors.js';
+export type { AppFailureKind, FailureContext } from './errors.js';
+
+export { assertExpectation } from './assertion.js';
 
 export { logger, loggerForRun, registerSecretPaths, redactObject } from './logger.js';
 
