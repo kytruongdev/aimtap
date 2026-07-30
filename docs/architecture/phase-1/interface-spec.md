@@ -35,8 +35,8 @@
 ### Evidence Collector
 **Mục đích:** dựng bằng chứng và đẩy bản ghi.
 **Đầu vào / đầu ra:**
-- `onStepEnd(step: { order; text; result; duration; error? }): void` — thêm mục vào nhật ký; nếu hỏng, chụp ảnh và phân loại lỗi.
-- `onScenarioEnd(testCase): TestCaseResult` — chốt trạng thái test case, đẩy TestCaseResult và StepLog sang Result Store theo một giao dịch.
+- `onStepEnd(step: { order; text; result; duration; error? }): void` — đồng bộ; thêm mục vào nhật ký và phân loại lỗi. Khi bước hỏng hoặc được đánh dấu chụp (BR-003) thì kích hoạt chụp ảnh và giữ promise chụp đang chờ, ngoài đường chờ của bước (NFR-10).
+- `onScenarioEnd(testCase): Promise<TestCaseResult>` — chờ các promise chụp ảnh đang treo để có `screenshot_path`, chốt trạng thái test case, đẩy TestCaseResult và StepLog sang Result Store theo một giao dịch. Test Runner `await` ở hook `afterScenario`.
 - `setCurrentScreen(name: string): void` — Test Runner gọi khi màn hình đổi (ADR-011).
 Lỗi chụp ảnh/ghi nhật ký được bắt tại đây, đánh dấu `evidence_missing`, không đổi trạng thái test case (BR-004).
 **Liên quan:** FR-EXEC-03→06, FR-EXEC-10, UC-07.

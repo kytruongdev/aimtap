@@ -62,17 +62,18 @@ sequenceDiagram
         Res->>Appium: tìm phần tử (wait-policy)
         Appium-->>Res: phần tử | lỗi không tìm thấy
         Steps->>Ev: onStepEnd(kết quả bước)
-        alt bước hỏng
-            Ev->>Appium: chụp màn hình
+        alt bước hỏng hoặc bước đánh dấu chụp
+            Ev->>Appium: kích hoạt chụp màn hình (giữ promise, không chờ tại bước)
             Ev->>Ev: phân loại lỗi (BR-014), đọc màn hình hiện tại
         end
     end
     WDIO->>Runner: afterScenario
-    Runner->>Ev: onScenarioEnd(test case)
+    Runner->>Ev: await onScenarioEnd(test case)
+    Ev->>Ev: chờ các promise chụp ảnh đang treo → screenshot_path
     Ev->>Store: saveTestCaseResult(result, steps) [giao dịch]
 ```
 
-Điểm thất bại: bước hỏng ⇒ test case `failed`, không chạy các bước còn lại, nhưng lượt chạy tiếp tục (BR-002). Lỗi khi chụp ảnh/ghi nhật ký được bắt trong Evidence Collector, đánh dấu `evidence_missing`, không đổi trạng thái test case (BR-004). Mất phiên giữa test case ⇒ `failed` loại `step_not_executed`; việc dừng lượt chạy do probe ở lần kiểm tra kế tiếp quyết định (UC-07 E2, BR-018). WDIO/Cucumber điều khiển việc lặp qua test case và gọi các hook; nền tảng không tự lặp (ADR-013).
+Điểm thất bại: bước hỏng ⇒ test case `failed`, không chạy các bước còn lại, nhưng lượt chạy tiếp tục (BR-002). Chụp ảnh kích hoạt ở `onStepEnd` (đồng bộ) nhưng chạy ngoài đường chờ của bước (NFR-10); `onScenarioEnd` là async, chờ mọi promise chụp đang treo để `screenshot_path` có mặt trước khi `saveTestCaseResult` ghi một giao dịch — Test Runner `await` ở hook `afterScenario`. Lỗi khi chụp ảnh/ghi nhật ký được bắt trong Evidence Collector, đánh dấu `evidence_missing`, không đổi trạng thái test case (BR-004). Mất phiên giữa test case ⇒ `failed` loại `step_not_executed`; việc dừng lượt chạy do probe ở lần kiểm tra kế tiếp quyết định (UC-07 E2, BR-018). WDIO/Cucumber điều khiển việc lặp qua test case và gọi các hook; nền tảng không tự lặp (ADR-013).
 
 ---
 

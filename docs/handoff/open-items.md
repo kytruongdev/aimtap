@@ -8,12 +8,21 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
-### CẦN TEAM-LEAD LÀM: Áp discriminant loại lỗi (ADR-016) vào failure-classifier khi làm US-2.2 (TICKET-015)
-Chốt ở ADR-016: `AppFailure` mang `kind: 'step_execution' | 'assertion'`, mặc định `step_execution`. Khi hiện thực US-2.2: (a) thêm trường `kind` vào `AppFailure` ở `src/shared/errors.ts` (mặc định `step_execution`, bộ phân biệt kiểu giữ nguyên); (b) `failure-classifier` ánh xạ `assertion → wrong_conclusion`, `step_execution` và lỗi lạ không thuộc `AppFailure`/`PlatformFailure` → `step_not_executed`, luôn giữ `error_message` gốc, `PlatformFailure` không ghi thành test case hỏng; (c) cung cấp cơ chế khẳng định của nền tảng để step definition ném `AppFailure` với `kind = 'assertion'`. `find` (US-2.1, đã merge) đã phù hợp nhờ mặc định — không sửa. Chi tiết ở `adr/adr-016.md`, `component-design.md` §Evidence Collector/§Shared. Không chạm khuôn khổ ngoài phần đã chốt.
+Không có mục đang mở.
 
 ---
 
 ## Đã xử lý
+
+### CẦN SA LÀM RÕ: Chữ ký async của Evidence Collector (`onScenarioEnd`) — *đã xử lý*
+Duyệt chữ ký async theo phương án Team Lead đề xuất, là hợp đồng interface (không cần ADR mới; khớp NFR-10, ghi giao dịch, ADR-013). Đã đồng bộ `interface-spec.md` §Evidence Collector và `sequence-diagrams.md` §2:
+- `onStepEnd(step): void` — đồng bộ; khi bước hỏng **hoặc bước đánh dấu chụp** (BR-003) thì kích hoạt chụp ảnh và giữ promise chụp đang chờ, ngoài đường chờ của bước (NFR-10).
+- `onScenarioEnd(testCase): Promise<TestCaseResult>` — chờ mọi promise chụp đang treo để có `screenshot_path`, rồi dựng `StepLog`/`TestCaseResult` và gọi `saveTestCaseResult` theo một giao dịch. Test Runner `await` ở hook `afterScenario`.
+- `setCurrentScreen(name): void` — không đổi.
+Không tách hàm `flush()` riêng: gộp await vào `onScenarioEnd` giữ một ranh giới trách nhiệm và tránh một lời gọi mà hook có thể quên. TICKET-016 hiện thực theo chữ ký này; TICKET-018 (`cucumber-hooks.ts`, US-3.4) `await onScenarioEnd` — không đổi mô hình thực thi ADR-013 vì hook Cucumber vốn await được.
+
+### CẦN TEAM-LEAD LÀM: Áp discriminant loại lỗi (ADR-016) vào failure-classifier khi làm US-2.2 (TICKET-015) — *đã xử lý*
+Chốt ở ADR-016: `AppFailure` mang `kind: 'step_execution' | 'assertion'`, mặc định `step_execution`. Hiện thực ở US-2.2 (commit `d253f01`): (a) `src/shared/errors.ts` thêm `kind` (mặc định `step_execution`, bộ phân biệt kiểu giữ nguyên); (b) `src/evidence/failure-classifier.ts` ánh xạ `assertion → wrong_conclusion`, `step_execution` và lỗi lạ không thuộc `AppFailure`/`PlatformFailure` → `step_not_executed`, luôn giữ `error_message` gốc; (c) cơ chế khẳng định của nền tảng `src/shared/assertion.ts` (`assertExpectation`) gắn `kind = 'assertion'`. `find` (US-2.1) phù hợp nhờ mặc định — không sửa. SA review commit `d253f01` (cấp code): sửa `assertExpectation` cho `PlatformFailure` đi qua nguyên trạng để không bị bọc thành `assertion` (giữ trên đường thiết bị/lượt chạy, không ghi thành test case hỏng — hệ quả ADR-016), chuyển `screenshot-writer` sang `fs/promises` (NFR-10), đặt `readonly` cho trường `StepRecord`. Ba điểm cấp code, tôn trọng hợp đồng lỗi sẵn có, không chạm khuôn khổ. `component-design.md` §Shared bổ sung `assertion.ts` (phần tử hạ tầng dùng chung).
 
 ### CẦN SA LÀM RÕ: Ma trận phụ thuộc module Phase 1 (phát hiện lúc implement US-1.1) — *đã xử lý*
 **Chốt:** (1) Chu trình Test Runner ↔ Locator Resolver gỡ theo Phương án C của ADR-014 (Proposed) — Locator không import Test Runner, dùng phiên WebdriverIO toàn cục để tìm phần tử, nhận tên màn hình qua sink Test Runner tiêm lúc mở phiên (`registerScreenSink`); quan hệ một chiều Test Runner → Locator Resolver, Locator chỉ phụ thuộc Shared. (2) CLI phụ thuộc thêm App Registry và Reporter. (3) Shared là kernel mọi module trong `src/` được phép import; Device & Build Manager → App Registry (chỉ kiểu `AppConfig`). Đã vào `north-star.md` §2/§2.1/§3, `component-design.md`, `interface-spec.md`, `adr/adr-014.md`. Ma trận provisional trong `eslint.config.ts` khớp ba hướng này nên chốt lại không kéo theo sửa mã US-1.1; Team Lead bỏ nhãn provisional ở `eslint.config.ts` và chỉnh diễn đạt US-2.1 (Locator dùng phiên toàn cục + sink) và US-3.4 (Test Runner tiêm sink) theo ADR-014.
