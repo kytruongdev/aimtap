@@ -19,6 +19,7 @@ Nền tảng đọc được biến môi trường và cấu hình vận hành q
 - `src/config/platform-config.ts`: cấu hình vận hành hợp nhất từ biến môi trường + mặc định: thời gian chờ, thư mục `output`, công tắc AI; trả kiểu đã kiểm tra.
 - Nạp khóa API từ `.env.local` gốc (bí mật toàn cục — ADR-009); đăng ký khóa API vào danh sách che qua `registerSecretPaths`.
 - `src/config/index.ts` phơi ra hàm đọc cấu hình vận hành và khóa API. Cập nhật `.env.example` (tên biến, gồm khóa API, không giá trị thật).
+- Không đưa các biến `AIMTAP_*` giá trị theo lượt chạy (thiết bị, app build, ký mã, endpoint Appium) vào schema này: chúng suy ra từ `DeviceContext` đã validate của Device & Build Manager và được kiểm tra sự hiện diện ở US-3.4 (TICKET-018) lúc mở lượt chạy, không phải cấu hình tĩnh của tầng này (open-items.md, 2026-07-30).
 
 **Acceptance Criteria (cấp code)**
 - [ ] Biến môi trường sai/thiếu bị schema bắt kèm tên biến.

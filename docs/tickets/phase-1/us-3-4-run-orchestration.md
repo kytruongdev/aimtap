@@ -11,19 +11,23 @@ WebdriverIO/Cucumber điều khiển việc lặp qua test case; nền tảng ph
 ## Tickets
 
 ### TICKET-018: Móc Cucumber → bằng chứng, probe, tiêm sink tên màn hình
-**Thiết kế liên quan:** component-design.md#Test-Runner (`cucumber-hooks.ts`), interface-spec.md#Evidence-Collector, interface-spec.md#Locator-Resolver (`registerScreenSink`), sequence-diagrams.md#2, #3, ADR-013, ADR-014, ADR-010, ADR-011, BR-002, BR-012, BR-018, UC-07
+**Thiết kế liên quan:** component-design.md#Test-Runner (`cucumber-hooks.ts`), interface-spec.md#Evidence-Collector, interface-spec.md#Locator-Resolver (`registerScreenSink`), sequence-diagrams.md#2, #3, ADR-013, ADR-014, ADR-010, ADR-011, ADR-016, ADR-009, BR-002, BR-012, BR-018, UC-07
 **Phụ thuộc:** TICKET-010, TICKET-012, TICKET-016, TICKET-017, TICKET-019
 
 **Chỉ dẫn code**
 - `src/runner/cucumber-hooks.ts` — handler vòng đời do `wdio-service` (TICKET-017) đăng ký:
+  - Trước khi phiên Appium mở: dựng biến môi trường capability (`AIMTAP_DEVICE_NAME`, `AIMTAP_PLATFORM_VERSION`, `AIMTAP_APP_PATH`, và với `CapabilityKind = 'device'` thêm `AIMTAP_UDID`, `AIMTAP_XCODE_ORG_ID`) từ `DeviceContext` đã validate của Device & Build Manager (FR-DEV-02) — một nguồn duy nhất, không dựa vào biến môi trường có sẵn ngoài luồng. Kiểm tra mọi khóa bắt buộc theo `CapabilityKind` có giá trị; thiếu bất kỳ khóa nào thì ném `PlatformFailure` liệt kê khóa thiếu, dừng lượt chạy sớm bằng thông báo đọc được thay vì lỗi cấp giao thức Appium (ADR-009: kiểm đầy đủ trước khi mở lượt chạy). Đây là `PlatformFailure`, không thành test case hỏng (ADR-016). Dùng đúng bộ khóa `AIMTAP_*` mà `iosCapabilities` (TICKET-017) đọc.
   - Lúc mở phiên: tiêm sink vào Locator Resolver qua `registerScreenSink(name => evidenceCollector.setCurrentScreen(name))` — Test Runner → Locator một chiều (ADR-014). Locator không import Test Runner.
   - `beforeScenario` — nếu cờ dừng cấp lượt chạy (do `run-session` giữ, TICKET-019) đã bật thì bỏ qua test case, không sinh bản ghi (BR-012). Ngược lại gọi `probeDuringRun` (ADR-010); probe trả `unavailable` thì bật cờ dừng với `stop_reason = device_unavailable`, bỏ qua test case, không sinh bản ghi (BR-018). Probe `ready` thì khởi tạo nhật ký cho test case và cho chạy.
   - `beforeStep`/`afterStep` — đo thời lượng bước, gọi `onStepEnd` với `order`, `text`, `result`, `duration`, `error?`.
   - `afterScenario` — gọi `onScenarioEnd` để chốt và đẩy bản ghi; cập nhật trạng thái tổng hợp ở `run-session`. Test case `failed` không bật cờ dừng (BR-002).
 - Cơ chế bỏ qua động của Cucumber (bỏ qua scenario khi cờ dừng bật) là điểm kiểm chứng lúc implement, không chốt cứng (ADR-013).
+- Điểm đặt chính xác của bước dựng/kiểm biến môi trường capability trong luồng khởi động testrunner là điểm kiểm chứng lúc implement. Nếu việc này buộc phải đổi cách CLI ↔ testrunner truyền biến môi trường giữa hai tiến trình thì dừng và đẩy về SA (chạm cách hai component giao tiếp), không tự quyết.
 - Import Evidence Collector, Locator Resolver, Device qua `index.ts`; đọc/ghi cờ dừng và trạng thái tổng hợp qua `run-session`. Cập nhật `src/runner/index.ts`.
 
 **Acceptance Criteria (cấp code)**
+- [ ] Thiếu bất kỳ `AIMTAP_*` bắt buộc theo `CapabilityKind` → lượt chạy dừng sớm bằng `PlatformFailure` liệt kê khóa thiếu, không mở phiên, không thành test case hỏng (test đơn vị với `DeviceContext` giả lập).
+- [ ] Capability env dựng từ `DeviceContext` đã validate, không đọc trực tiếp biến môi trường ngoài luồng.
 - [ ] Lúc mở phiên, sink được tiêm vào Locator Resolver; `screenName` do Locator báo qua sink được điền vào `screen` khi bước hỏng (ADR-011, ADR-014).
 - [ ] `beforeScenario` gọi `probeDuringRun`; `unavailable` → bật cờ dừng `device_unavailable`, bỏ qua test case, không sinh bản ghi (test đơn vị với probe giả lập).
 - [ ] Cờ dừng đã bật → `beforeScenario` bỏ qua các test case còn lại, không sinh bản ghi (BR-012).
