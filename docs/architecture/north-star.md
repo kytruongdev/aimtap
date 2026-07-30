@@ -77,7 +77,7 @@ Diagram này được cập nhật mỗi khi một quyết định kiến trúc 
 | Result Store | Lưu bản ghi kết quả có cấu trúc của mỗi lượt chạy và mỗi test case trên máy QC. | ghi/đọc SQLite cục bộ | better-sqlite3, Shared | 1 |
 | Reporter | Sinh báo cáo của một lượt chạy ở định dạng đính được vào Jira. | đọc Result Store và tệp ảnh | Result Store, công cụ PDF (Puppeteer), Shared | 1 |
 | Config & Secrets | Cung cấp cấu hình vận hành của nền tảng, nạp khóa API và dữ liệu kiểm thử từ nguồn ngoài kho mã. | đọc biến môi trường, tệp cấu hình cục bộ | Shared | 1 |
-| Shared | Cung cấp hạ tầng dùng chung cho mọi module: ghi log có cấu trúc, phân cấp lớp lỗi, kiểu dữ liệu chung. | — | — | 1 |
+| Shared | Cung cấp hạ tầng dùng chung cho mọi module: ghi log có cấu trúc, phân cấp lớp lỗi, tham số thời gian chờ, kiểu dữ liệu chung. | — | — | 1 |
 | Claude Client | Điểm duy nhất của nền tảng gọi Claude API: quản lý khóa, chọn mô hình, giới hạn số lần gọi, và tắt hoàn toàn bằng cấu hình. | đọc Config & Secrets | Config & Secrets, Shared | 2 |
 | Script Generator | Sinh phần mô tả hành vi và phần cài đặt còn thiếu từ mô tả của QC và page source của màn hình đích, dựa trên danh sách step definition hiện có. | đọc step definition hiện có, ghi tệp nháp | Claude Client, Shared | 2 |
 | Analytics | Trả lời câu hỏi về xu hướng chất lượng từ dữ liệu kết quả đã tích lũy. | đọc Result Store | Result Store, Shared | 3 |
@@ -126,7 +126,6 @@ aimtap/
 │   ├── locator/                          # Locator Resolver
 │   │   ├── locator-resolver.ts           # điểm chèn duy nhất khi tìm phần tử (ADR-004)
 │   │   ├── locator.ts                    # kiểu Locator và các chiến lược tìm kiếm của iOS
-│   │   ├── wait-policy.ts                # thời gian chờ có điều kiện, dùng chung cho mọi lần tìm phần tử
 │   │   └── index.ts
 │   │
 │   ├── evidence/                         # Evidence Collector
@@ -159,6 +158,7 @@ aimtap/
 │   ├── shared/                           # Shared
 │   │   ├── logger.ts                     # log có cấu trúc, gắn run-id vào mọi dòng
 │   │   ├── errors.ts                     # AppFailure và PlatformFailure — hai nhánh lỗi của hệ thống
+│   │   ├── wait-policy.ts                # tham số thời gian chờ tập trung + withRetries, dùng chung find và probe (ADR-015)
 │   │   └── types.ts
 │   │
 │   ├── ai/                                                          # [Phase 2]
@@ -246,7 +246,7 @@ Các nguyên tắc dưới đây áp dụng cho mọi module; lập luận và n
 - Lỗi phát sinh khi chụp ảnh hoặc ghi nhật ký không làm thay đổi trạng thái của test case; test case tiếp tục chạy và phần bằng chứng thiếu được ghi nhận là thiếu.
 
 **Độ ổn định của lượt chạy**
-- Không dùng thời gian chờ cố định. Mọi lần chờ là chờ có điều kiện với thời gian chờ tối đa, đặt tập trung ở `wait-policy.ts` thay vì rải trong Page Object.
+- Không dùng thời gian chờ cố định. Mọi lần chờ là chờ có điều kiện với thời gian chờ tối đa, đặt tập trung ở `wait-policy.ts` (Shared) thay vì rải trong Page Object.
 - Không gọi các lệnh giao thức cấp thấp của WebDriver; dùng lệnh cấp cao của WebdriverIO để giữ được cơ chế chờ và thử lại sẵn có.
 - Một test case hỏng không làm dừng lượt chạy; các test case còn lại vẫn chạy và kết quả vẫn được ghi. Lượt chạy chỉ dừng giữa chừng khi QC hủy hoặc khi thiết bị không còn sẵn sàng, kiểm tra bằng probe nhẹ trên phiên trước mỗi test case (ADR-010).
 - Mỗi test case tự đưa ứng dụng về trạng thái nó cần ở bước mở đầu, không giả định trạng thái do test case khác hay lượt chạy trước để lại. Kết quả của một test case do đó không phụ thuộc vào thứ tự chạy.
@@ -300,6 +300,7 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Công cụ sinh báo cáo PNG/PDF không giao diện. | [ADR-012](adr/adr-012.md) |
 | Mô hình thực thi Test Runner trên WebdriverIO/Cucumber. | [ADR-013](adr/adr-013.md) |
 | Locator Resolver không phụ thuộc Test Runner; phá chu trình bằng sink tiêm và phiên WebdriverIO toàn cục. | [ADR-014](adr/adr-014.md) |
+| wait-policy là hạ tầng Shared, dùng chung cho tìm phần tử và probe thiết bị. | [ADR-015](adr/adr-015.md) |
 
 ---
 

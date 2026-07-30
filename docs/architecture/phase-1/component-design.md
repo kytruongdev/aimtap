@@ -1,6 +1,6 @@
 # Component Design — Phase 1
 
-Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF), ADR-013 (mô hình thực thi Test Runner), ADR-014 (Locator Resolver không phụ thuộc Test Runner).
+Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF), ADR-013 (mô hình thực thi Test Runner), ADR-014 (Locator Resolver không phụ thuộc Test Runner), ADR-015 (wait-policy là hạ tầng Shared).
 
 Danh sách tệp dưới mỗi module là tệp đại diện, không phải danh sách đầy đủ; việc chia hàm/tệp cấp ticket thuộc Team Lead.
 
@@ -36,7 +36,7 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 ## Device & Build Manager
 **Trách nhiệm:** Chuẩn bị thiết bị, cài build, kiểm tra thiết bị sẵn sàng trước và giữa lượt chạy.
 **Cấu trúc bên trong:**
-- `device-manager.ts` — hợp đồng chung: `prepareDevice`, `installBuild`, `ensureReadyBeforeRun` (FR-DEV-02; sở hữu kiểm tra thiết bị/OS/bản build ở tầng hệ điều hành, trả `DeviceContext`), `probeDuringRun` (ADR-010, probe nhẹ trên phiên).
+- `device-manager.ts` — hợp đồng chung: `prepareDevice`, `installBuild`, `ensureReadyBeforeRun` (FR-DEV-02; sở hữu kiểm tra thiết bị/OS/bản build ở tầng hệ điều hành, trả `DeviceContext`), `probeDuringRun` (ADR-010, probe nhẹ trên phiên, bọc trong `wait-policy` của Shared).
 - `simulator-driver.ts` / `real-device-driver.ts` — cài đặt cho hai loại thiết bị qua `simctl` và công cụ thiết bị thật.
 - `environment-check.ts` — `checkEnvironment(probes, target?)`: luôn kiểm host tools (Node, Xcode, Appium); kèm `target` thì thêm bản build/thiết bị/OS. Gom mọi mục trước khi báo; `assertEnvironmentReady` gộp mục hỏng thành một `PlatformFailure`.
 
@@ -57,9 +57,8 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 ## Locator Resolver
 **Trách nhiệm:** Điểm duy nhất tìm phần tử; điểm chèn self-healing của Phase 2 (ADR-004).
 **Cấu trúc bên trong:**
-- `locator-resolver.ts` — `find(locator, screenName)`: Phase 1 tìm phần tử qua phiên WebdriverIO toàn cục theo `wait-policy`, trả phần tử hoặc ném lỗi không tìm thấy. `screenName` do Page Object truyền vào; đẩy tới sink do Test Runner tiêm lúc mở phiên (ADR-014), không import Test Runner (ADR-011).
+- `locator-resolver.ts` — `find(locator, screenName)`: Phase 1 tìm phần tử qua phiên WebdriverIO toàn cục theo `wait-policy` (của Shared), trả phần tử hoặc ném lỗi không tìm thấy. `screenName` do Page Object truyền vào; đẩy tới sink do Test Runner tiêm lúc mở phiên (ADR-014), không import Test Runner (ADR-011).
 - `locator.ts` — kiểu Locator và các chiến lược iOS (accessibility id, id, predicate string, class chain).
-- `wait-policy.ts` — thời gian chờ có điều kiện tập trung, dùng cho cả tìm phần tử và probe thiết bị.
 **Phụ thuộc:** WebdriverIO (phiên toàn cục), Shared.
 **Requirement liên quan:** FR-AUTH-02, FR-AUTH-03, BR-007, UC-02.
 
@@ -97,6 +96,7 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 **Cấu trúc bên trong:**
 - `logger.ts` — log có cấu trúc (Pino), gắn `run-id`, che trường bí mật.
 - `errors.ts` — `AppFailure` và `PlatformFailure`.
+- `wait-policy.ts` — tham số thời gian chờ có điều kiện tập trung (`timeoutMs`/`intervalMs`/`retries`) và `withRetries`; dùng chung cho `find` (Locator Resolver) và probe thiết bị (Device & Build Manager) (ADR-010, ADR-015).
 - `types.ts` — kiểu dùng chung.
 **Phụ thuộc:** —
 **Requirement liên quan:** NFR-03 (tách hai nhánh lỗi), NFR-04 (che bí mật).

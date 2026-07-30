@@ -3,10 +3,9 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 vi.mock('@wdio/globals', () => ({ $: vi.fn() }));
 
 import { $ } from '@wdio/globals';
-import { isAppFailure } from '../shared/index.js';
+import { isAppFailure, resetWaitPolicy } from '../shared/index.js';
 import { byAccessibilityId } from './locator.js';
 import { clearScreenSink, find, registerScreenSink } from './locator-resolver.js';
-import { resetWaitPolicy } from './wait-policy.js';
 
 const findElement = $ as unknown as Mock;
 
