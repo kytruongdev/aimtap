@@ -27,4 +27,12 @@ describe('failure branches', () => {
   it('leaves context undefined when not provided', () => {
     expect(new PlatformFailure('no context').context).toBeUndefined();
   });
+
+  it('defaults an app failure kind to step_execution (ADR-016)', () => {
+    expect(new AppFailure('element not found').kind).toBe('step_execution');
+  });
+
+  it('carries an explicit assertion kind', () => {
+    expect(new AppFailure('wrong text', undefined, 'assertion').kind).toBe('assertion');
+  });
 });

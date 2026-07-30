@@ -1,6 +1,6 @@
 # Component Design — Phase 1
 
-Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF), ADR-013 (mô hình thực thi Test Runner), ADR-014 (Locator Resolver không phụ thuộc Test Runner), ADR-015 (wait-policy là hạ tầng Shared).
+Thiết kế cấu trúc bên trong các module Phase 1 ở mức module/layer. Ranh giới và phụ thuộc giữa các module theo `north-star.md` §2; cây thư mục theo §2.1. Quyết định Phase 1 áp dụng: ADR-009 (dữ liệu kiểm thử ngoài kho mã), ADR-010 (probe thiết bị), ADR-011 (tên màn hình), ADR-012 (công cụ PDF), ADR-013 (mô hình thực thi Test Runner), ADR-014 (Locator Resolver không phụ thuộc Test Runner), ADR-015 (wait-policy là hạ tầng Shared), ADR-016 (discriminant loại lỗi trên AppFailure).
 
 Danh sách tệp dưới mỗi module là tệp đại diện, không phải danh sách đầy đủ; việc chia hàm/tệp cấp ticket thuộc Team Lead.
 
@@ -57,7 +57,7 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 ## Locator Resolver
 **Trách nhiệm:** Điểm duy nhất tìm phần tử; điểm chèn self-healing của Phase 2 (ADR-004).
 **Cấu trúc bên trong:**
-- `locator-resolver.ts` — `find(locator, screenName)`: Phase 1 tìm phần tử qua phiên WebdriverIO toàn cục theo `wait-policy` (của Shared), trả phần tử hoặc ném lỗi không tìm thấy. `screenName` do Page Object truyền vào; đẩy tới sink do Test Runner tiêm lúc mở phiên (ADR-014), không import Test Runner (ADR-011).
+- `locator-resolver.ts` — `find(locator, screenName)`: Phase 1 tìm phần tử qua phiên WebdriverIO toàn cục theo `wait-policy` (của Shared), trả phần tử hoặc ném `AppFailure` không tìm thấy (`kind = step_execution` mặc định, ADR-016). `screenName` do Page Object truyền vào; đẩy tới sink do Test Runner tiêm lúc mở phiên (ADR-014), không import Test Runner (ADR-011).
 - `locator.ts` — kiểu Locator và các chiến lược iOS (accessibility id, id, predicate string, class chain).
 **Phụ thuộc:** WebdriverIO (phiên toàn cục), Shared.
 **Requirement liên quan:** FR-AUTH-02, FR-AUTH-03, BR-007, UC-02.
@@ -68,7 +68,7 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 - `evidence-collector.ts` — nhận sự kiện bước/test case, dựng bản ghi kết quả và nhật ký, đẩy sang Result Store; đọc màn hình hiện tại tại bước hỏng (ADR-011).
 - `execution-log.ts` — dựng nhật ký thực thi trong bộ nhớ: bước theo thứ tự, kết quả, thời lượng, lỗi tại bước hỏng.
 - `screenshot-writer.ts` — chụp và ghi ảnh tại bước hỏng và bước được đánh dấu, ngoài đường chờ của bước.
-- `failure-classifier.ts` — phân loại `AppFailure`/`PlatformFailure`, và loại lỗi hai giá trị của BR-014.
+- `failure-classifier.ts` — đọc `kind` của `AppFailure` để ra `failure_type` (BR-014): `assertion` → `wrong_conclusion`; `step_execution` và lỗi lạ không thuộc `AppFailure`/`PlatformFailure` → `step_not_executed`; luôn giữ thông báo lỗi gốc; `PlatformFailure` không ghi thành test case hỏng (ADR-016).
 **Phụ thuộc:** Result Store, Shared.
 **Requirement liên quan:** FR-EXEC-03→06, FR-EXEC-10, BR-003, BR-004, BR-014, UC-07.
 
@@ -95,7 +95,7 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 **Trách nhiệm:** Hạ tầng dùng chung.
 **Cấu trúc bên trong:**
 - `logger.ts` — log có cấu trúc (Pino), gắn `run-id`, che trường bí mật.
-- `errors.ts` — `AppFailure` và `PlatformFailure`.
+- `errors.ts` — `AppFailure` (mang `kind`: `step_execution` mặc định | `assertion` — ADR-016) và `PlatformFailure`.
 - `wait-policy.ts` — tham số thời gian chờ có điều kiện tập trung (`timeoutMs`/`intervalMs`/`retries`) và `withRetries`; dùng chung cho `find` (Locator Resolver) và probe thiết bị (Device & Build Manager) (ADR-010, ADR-015).
 - `types.ts` — kiểu dùng chung.
 **Phụ thuộc:** —
