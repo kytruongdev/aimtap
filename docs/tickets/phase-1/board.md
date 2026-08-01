@@ -4,7 +4,7 @@ Phân cấp: **Epic → User Story → Ticket** (`conventions.md`). Mỗi user s
 
 Chẻ theo Phương án A (lát mỏng theo module): 5 epic → 17 user story → 27 ticket, phủ US-01→US-20 (BA).
 
-**Tiến độ (2026-07-30):** 8/17 user story (14/27 ticket) đã merge vào master — US-1.1, US-1.3, US-1.4, US-3.1, US-2.1, US-3.2, US-2.2, US-2.3. EPIC-2 (tương tác phần tử & bằng chứng) hoàn tất. US-3.3 (TICKET-017) đang làm.
+**Tiến độ (2026-08-01):** 9/17 user story (15/27 ticket) đã merge vào master — US-1.1, US-1.3, US-1.4, US-3.1, US-2.1, US-3.2, US-2.2, US-2.3, US-3.3. EPIC-2 (tương tác phần tử & bằng chứng) hoàn tất. US-3.4 (điểm hội tụ tích hợp) đã đủ toàn bộ phụ thuộc, sẵn sàng làm.
 
 ---
 
@@ -70,13 +70,13 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 | US-1.4 | US-1.1 | US-1.2, US-1.3, US-2.1, US-2.2, US-3.3 | **Done** |
 | US-2.1 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.2, US-3.3 | **Done** |
 | US-2.2 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.1, US-3.3 | **Done** |
-| US-3.3 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.1, US-2.2 | In progress |
+| US-3.3 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.1, US-2.2 | **Done** |
 | US-2.3 | US-1.4, US-2.2 | US-3.1 | **Done** |
 | US-3.1 | US-1.1, US-1.3 | US-2.3, US-4.1 | **Done** |
 | US-3.2 | US-2.1, US-3.1 | — | **Done** |
 | US-4.1 | US-1.4 | US-3.1, US-4.2 | Todo |
 | US-4.2 | US-1.1, US-3.1 | US-4.1 | Todo (chờ chốt thư viện CLI) |
-| US-3.4 | US-1.4, US-2.1, US-2.3, US-3.1, US-3.2, US-3.3 | — | Todo |
+| US-3.4 | US-1.4, US-2.1, US-2.3, US-3.1, US-3.2, US-3.3 | — | Todo (đủ dep, sẵn sàng) |
 | US-4.3 | US-1.2, US-1.3, US-3.1, US-3.4, US-4.1, US-4.2 | — | Todo |
 | US-4.4 | US-4.1, US-4.2 | — | Todo |
 | US-5.2 | US-1.3, US-2.1, US-3.3 (chạy được cần US-4.3) | — | Todo |
@@ -91,7 +91,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 7. US-4.3 (`run`) và US-4.4 (`report`).
 8. US-5.2 — thí điểm, nghiệm thu đầu-cuối.
 
-**Còn lại:** US-3.3 (đang làm); Todo — US-5.1, US-1.2, US-4.1, US-3.4, US-4.3, US-4.4, US-5.2. Sẵn sàng làm ngay (deps đã merge): US-5.1, US-1.2, US-4.1. US-4.2 chờ chốt thư viện CLI. US-3.4 đủ dep khi US-3.3 merge.
+**Còn lại:** Todo — US-5.1, US-1.2, US-4.1, US-3.4, US-4.3, US-4.4, US-5.2. Sẵn sàng làm ngay (deps đã merge): US-5.1, US-1.2, US-4.1, và US-3.4 (điểm hội tụ tích hợp — toàn bộ phụ thuộc US-1.4/2.1/2.3/3.1/3.2/3.3 đã merge). US-4.2 chờ chốt thư viện CLI.
 
 ## Phụ thuộc cấp ticket (trong và giữa user story)
 
