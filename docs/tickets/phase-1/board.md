@@ -4,7 +4,7 @@ Phân cấp: **Epic → User Story → Ticket** (`conventions.md`). Mỗi user s
 
 Chẻ theo Phương án A (lát mỏng theo module): 5 epic → 17 user story → 27 ticket, phủ US-01→US-20 (BA).
 
-**Tiến độ (2026-08-02):** 10/17 user story (17/27 ticket) đã merge vào master — US-1.1, US-1.3, US-1.4, US-3.1, US-2.1, US-3.2, US-2.2, US-2.3, US-3.3, US-3.4. EPIC-2 và EPIC-3 hoàn tất. US-1.2 (Config & Secrets) đang làm — đóng nốt EPIC-1.
+**Tiến độ (2026-08-02):** 11/17 user story (19/27 ticket) đã merge vào master — US-1.1, US-1.2, US-1.3, US-1.4, US-2.1, US-2.2, US-2.3, US-3.1, US-3.2, US-3.3, US-3.4. **EPIC-1, EPIC-2, EPIC-3 hoàn tất.** US-4.1 (Sinh báo cáo) đang làm.
 
 ---
 
@@ -65,7 +65,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 |---|---|---|---|
 | US-1.1 | — | — | **Done** |
 | US-5.1 | US-1.1 | hầu hết | Todo |
-| US-1.2 | US-1.1 | US-1.3, US-1.4, US-2.1, US-2.2, US-3.3 | In progress |
+| US-1.2 | US-1.1 | US-1.3, US-1.4, US-2.1, US-2.2, US-3.3 | **Done** |
 | US-1.3 | US-1.1 | US-1.2, US-1.4, US-2.1, US-2.2, US-3.3 | **Done** |
 | US-1.4 | US-1.1 | US-1.2, US-1.3, US-2.1, US-2.2, US-3.3 | **Done** |
 | US-2.1 | US-1.1 | US-1.2, US-1.3, US-1.4, US-2.2, US-3.3 | **Done** |
@@ -74,7 +74,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 | US-2.3 | US-1.4, US-2.2 | US-3.1 | **Done** |
 | US-3.1 | US-1.1, US-1.3 | US-2.3, US-4.1 | **Done** |
 | US-3.2 | US-2.1, US-3.1 | — | **Done** |
-| US-4.1 | US-1.4 | US-3.1, US-4.2 | Todo |
+| US-4.1 | US-1.4 | US-3.1, US-4.2 | In progress |
 | US-4.2 | US-1.1, US-3.1 | US-4.1 | Todo (chờ chốt thư viện CLI) |
 | US-3.4 | US-1.4, US-2.1, US-2.3, US-3.1, US-3.2, US-3.3 | — | **Done** |
 | US-4.3 | US-1.2, US-1.3, US-3.1, US-3.4, US-4.1, US-4.2 | — | Todo |
@@ -91,7 +91,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 7. US-4.3 (`run`) và US-4.4 (`report`).
 8. US-5.2 — thí điểm, nghiệm thu đầu-cuối.
 
-**Còn lại:** US-1.2 (đang làm); Todo — US-5.1, US-4.1, US-4.3, US-4.4, US-5.2. Sẵn sàng làm ngay (deps đã merge): US-5.1, US-4.1. US-4.2 chờ chốt thư viện CLI. US-4.3 (`run`) mở khi US-1.2/4.1/4.2 xong.
+**Còn lại:** US-4.1 (đang làm); Todo — US-5.1, US-4.3, US-4.4, US-5.2. Sẵn sàng làm ngay (deps đã merge): US-5.1. US-4.2 chờ chốt thư viện CLI. US-4.3 (`run`) mở khi US-4.1/4.2 xong.
 
 ## Phụ thuộc cấp ticket (trong và giữa user story)
 
