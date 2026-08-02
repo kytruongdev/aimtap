@@ -1,5 +1,5 @@
-import { PlatformFailure } from '../shared/index.js';
 import { probeDuringRun, type ProbeResult, type ProbeSession } from '../device/index.js';
+import { PlatformFailure } from '../shared/index.js';
 import type { EvidenceCollector, StepEvent } from '../evidence/index.js';
 import { registerScreenSink as defaultRegisterScreenSink, type ScreenSink } from '../locator/index.js';
 import type { CapabilityKind } from './wdio-service.js';
@@ -10,13 +10,14 @@ import type { RunSession } from './run-session.js';
 // and scenario events to the Evidence Collector, and inject the screen-name sink into the Locator
 // Resolver at session open (ADR-014, one-way Test Runner -> Locator).
 
-// --- Capability environment guard (open-items 2026-07-30) --------------------------------------
+// --- Capability environment guard (open-items 2026-07-30 / 2026-08-02) --------------------------
 // The per-run capability values (`AIMTAP_*`) that iosCapabilities (TICKET-017) reads are populated by
 // the CLI at run launch (US-4.3) from the AppConfig, the validated DeviceContext (FR-DEV-02) and the
-// signing secrets (US-1.2). This guard only verifies they are present before the Appium session
-// opens, so a missing value fails the run early with a readable PlatformFailure instead of an opaque
-// Appium protocol error (ADR-009). US-3.3 keeps defaulting missing env to empty strings at its layer
-// (ADR-014); this is where the absence is caught.
+// signing secrets (US-1.2). These pure checks verify the values are present *before the Appium
+// session opens* so a missing value fails the run early with a readable PlatformFailure instead of an
+// opaque Appium protocol error (ADR-009). They are called from two pre-session points, never from a
+// worker `before` hook (which runs after the session is created): the CLI precondition phase (US-4.3,
+// the authoritative check) and AimtapService.onPrepare (the safety net for a direct `wdio run`).
 
 const BASE_CAPABILITY_KEYS = [
   'AIMTAP_DEVICE_NAME',
@@ -78,15 +79,13 @@ export interface CucumberHooksDeps {
   evidence: EvidenceCollector;
   /** The live WebdriverIO session the probe runs against; injected so hooks are testable. */
   getProbeSession: () => ProbeSession;
-  capabilityKind: CapabilityKind;
-  env?: NodeJS.ProcessEnv;
   probe?: (session: ProbeSession) => Promise<ProbeResult>;
   registerScreenSink?: (sink: ScreenSink) => void;
   now?: () => number;
 }
 
 export interface CucumberHooks {
-  /** At session open: guard the run environment and wire the screen-name sink into the Locator. */
+  /** At session open (worker `before`): wire the screen-name sink into the Locator Resolver. */
   onSessionStart(): void;
   beforeScenario(scenario: ScenarioRef): Promise<void>;
   onStepEnd(step: StepEndRef): void;
@@ -94,8 +93,7 @@ export interface CucumberHooks {
 }
 
 export function createCucumberHooks(deps: CucumberHooksDeps): CucumberHooks {
-  const { session, evidence, getProbeSession, capabilityKind } = deps;
-  const env = deps.env ?? process.env;
+  const { session, evidence, getProbeSession } = deps;
   const probe = deps.probe ?? probeDuringRun;
   const register = deps.registerScreenSink ?? defaultRegisterScreenSink;
   const now = deps.now ?? (() => Date.now());
@@ -108,7 +106,8 @@ export function createCucumberHooks(deps: CucumberHooksDeps): CucumberHooks {
 
   return {
     onSessionStart() {
-      assertCapabilityEnv(capabilityKind, env);
+      // The sink lives in the worker process where the Locator Resolver runs; it is wired here, at
+      // session open. The capability-env guard is NOT here - it runs pre-session (see above).
       register((name) => evidence.setCurrentScreen(name));
     },
 

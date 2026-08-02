@@ -1,4 +1,5 @@
 import { getWaitPolicy, logger, type WaitPolicy } from '../shared/index.js';
+import { assertCapabilityEnv } from './cucumber-hooks.js';
 import type { CucumberHooks, ScenarioRef, StepEndRef } from './cucumber-hooks.js';
 
 // TICKET-017: WDIO service + the WebdriverIO/Cucumber config building blocks (ADR-001, ADR-007,
@@ -43,7 +44,7 @@ export function buildCucumberOpts(
 // values (target device, app build, code signing, Appium endpoint) are injected via environment
 // variables at run start, so US-3.3 carries no build-time dependency on the Device & Build Manager or
 // the CLI. A simulator is addressed by name + version; a real device also needs its udid and signing
-// identity. Presence of these variables is guarded before the session opens (cucumber-hooks.ts).
+// identity. Presence of these variables is guarded before the session opens (AimtapService.onPrepare).
 export interface IosCapability {
   platformName: 'iOS';
   'appium:automationName': 'XCUITest';
@@ -120,13 +121,38 @@ export function stepEndRef(
   };
 }
 
+export interface AimtapServiceOptions {
+  /** Which capability set the run uses; drives the pre-session environment guard. */
+  capabilityKind: CapabilityKind;
+  /** Overridable for tests; defaults to the process environment. */
+  env?: NodeJS.ProcessEnv;
+  /** Worker-only lifecycle handlers, injected by the run assembly (US-4.3). */
+  hooks?: CucumberHooks;
+}
+
 // WDIO service: its presence lets the testrunner load the platform. A single Appium session per run
-// is the testrunner default for one worker (AS-P1-01). The Cucumber lifecycle handlers are injected
-// by the run assembly (US-4.3 launch wiring); the service adapts the WDIO payloads and delegates.
+// is the testrunner default for one worker (AS-P1-01).
+//
+// onPrepare runs in the launcher, before any session, and is where the capability-env guard belongs
+// (ADR-009): a `before` hook runs after the session is already created, so a guard there is too late.
+// This guard is the safety net for a direct `wdio run config/...`; the authoritative check runs in
+// the CLI precondition phase (US-4.3, sequence-diagrams §1). The screen-name sink stays in the worker
+// `before` hook because the Locator Resolver it feeds lives in the worker process.
 export class AimtapService {
+  private readonly capabilityKind: CapabilityKind;
+  private readonly env: NodeJS.ProcessEnv;
+  private readonly hooks: CucumberHooks | undefined;
   private stepOrder = 0;
 
-  constructor(private readonly hooks?: CucumberHooks) {}
+  constructor(options: AimtapServiceOptions) {
+    this.capabilityKind = options.capabilityKind;
+    this.env = options.env ?? process.env;
+    this.hooks = options.hooks;
+  }
+
+  onPrepare(): void {
+    assertCapabilityEnv(this.capabilityKind, this.env);
+  }
 
   before(): void {
     logger.info('appium session opened for the run');

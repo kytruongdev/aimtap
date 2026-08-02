@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { isPlatformFailure } from '../shared/index.js';
 import type { CucumberHooks } from './cucumber-hooks.js';
 import {
   AimtapService,
@@ -7,6 +8,12 @@ import {
   scenarioRef,
   stepEndRef,
 } from './wdio-service.js';
+
+const simEnv = {
+  AIMTAP_DEVICE_NAME: 'iPhone 15',
+  AIMTAP_PLATFORM_VERSION: '17.5',
+  AIMTAP_APP_PATH: '/builds/demo.app',
+} as NodeJS.ProcessEnv;
 
 describe('buildCucumberOpts', () => {
   it('takes the step timeout from the given wait policy, not a hard-coded value', () => {
@@ -29,12 +36,6 @@ describe('buildCucumberOpts', () => {
 });
 
 describe('iosCapabilities', () => {
-  const simEnv = {
-    AIMTAP_DEVICE_NAME: 'iPhone 15',
-    AIMTAP_PLATFORM_VERSION: '17.5',
-    AIMTAP_APP_PATH: '/builds/demo.app',
-  } as NodeJS.ProcessEnv;
-
   it('builds simulator capabilities from name, version and app, without device-only fields', () => {
     const caps = iosCapabilities('sim', simEnv);
 
@@ -106,7 +107,34 @@ describe('payload adapters', () => {
   });
 });
 
-describe('AimtapService', () => {
+describe('AimtapService.onPrepare (pre-session guard)', () => {
+  it('throws a PlatformFailure naming the missing capability variables', () => {
+    const service = new AimtapService({ capabilityKind: 'sim', env: {} as NodeJS.ProcessEnv });
+
+    try {
+      service.onPrepare();
+      expect.unreachable('onPrepare must throw when capability env is missing');
+    } catch (error) {
+      expect(isPlatformFailure(error)).toBe(true);
+      expect((error as Error).message).toContain('AIMTAP_APP_PATH');
+    }
+  });
+
+  it('passes when every required capability variable is present', () => {
+    const service = new AimtapService({ capabilityKind: 'sim', env: simEnv });
+
+    expect(() => service.onPrepare()).not.toThrow();
+  });
+
+  it('does not run the guard in before() — before() is post-session (SA review 2026-08-02)', () => {
+    const service = new AimtapService({ capabilityKind: 'sim', env: {} as NodeJS.ProcessEnv });
+
+    // Missing env, yet before() must not throw: the guard lives in onPrepare, not here.
+    expect(() => service.before()).not.toThrow();
+  });
+});
+
+describe('AimtapService lifecycle delegation', () => {
   function fakeHooks(): CucumberHooks & { calls: string[] } {
     const calls: string[] = [];
     return {
@@ -131,7 +159,7 @@ describe('AimtapService', () => {
 
   it('delegates the lifecycle to the hooks and numbers steps within a scenario', async () => {
     const hooks = fakeHooks();
-    const service = new AimtapService(hooks);
+    const service = new AimtapService({ capabilityKind: 'sim', env: simEnv, hooks });
 
     service.before();
     await service.beforeScenario(world);
@@ -152,7 +180,7 @@ describe('AimtapService', () => {
 
   it('resets the step counter at the start of each scenario', async () => {
     const hooks = fakeHooks();
-    const service = new AimtapService(hooks);
+    const service = new AimtapService({ capabilityKind: 'sim', env: simEnv, hooks });
 
     await service.beforeScenario(world);
     service.beforeStep();
@@ -168,7 +196,7 @@ describe('AimtapService', () => {
   });
 
   it('is inert without hooks (session-open logging only)', () => {
-    const service = new AimtapService();
+    const service = new AimtapService({ capabilityKind: 'sim', env: simEnv });
 
     expect(() => service.before()).not.toThrow();
     expect(() => service.beforeStep()).not.toThrow();

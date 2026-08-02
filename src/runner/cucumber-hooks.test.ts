@@ -15,6 +15,9 @@ import {
 type ProbeFn = (session: ProbeSession) => Promise<ProbeResult>;
 
 // --- Capability environment guard --------------------------------------------------------------
+// The pure guard used by AimtapService.onPrepare (safety net) and the CLI precondition phase
+// (US-4.3, the authoritative check). It is intentionally NOT called from a worker `before` hook,
+// which runs after the session is created (SA review 2026-08-02).
 
 describe('capability env guard', () => {
   const simEnv = {
@@ -122,12 +125,6 @@ function build(deps: Partial<CucumberHooksDeps> = {}) {
     session,
     evidence,
     getProbeSession: () => probeSession,
-    capabilityKind: 'sim',
-    env: {
-      AIMTAP_DEVICE_NAME: 'iPhone 15',
-      AIMTAP_PLATFORM_VERSION: '17.5',
-      AIMTAP_APP_PATH: '/builds/demo.app',
-    } as NodeJS.ProcessEnv,
     probe,
     registerScreenSink: (sink) => registered.push(sink),
     now: () => 1000,
@@ -139,7 +136,7 @@ function build(deps: Partial<CucumberHooksDeps> = {}) {
 const scenario = { test_feature: 'Login', test_case: 'valid credentials' };
 
 describe('onSessionStart', () => {
-  it('guards the environment and wires the screen sink to the evidence collector', () => {
+  it('wires the screen sink to the evidence collector (guard is in onPrepare, not here)', () => {
     const evidence = fakeEvidence();
     const { hooks, registered } = build({ evidence });
 
@@ -149,13 +146,6 @@ describe('onSessionStart', () => {
     const [sink] = registered;
     sink?.('Home');
     expect(evidence.screens).toEqual(['Home']);
-  });
-
-  it('throws before wiring anything when a capability variable is missing', () => {
-    const { hooks, registered } = build({ env: {} as NodeJS.ProcessEnv });
-
-    expect(() => hooks.onSessionStart()).toThrow();
-    expect(registered).toHaveLength(0);
   });
 });
 

@@ -8,7 +8,22 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
-Không có mục đang mở.
+### CẦN TEAM-LEAD LÀM: Guard hiện diện `AIMTAP_*` đặt sai vòng đời — chạy sau khi phiên đã mở (phát hiện lúc review US-3.4)
+Bối cảnh: mở từ review US-3.3 (guard cần chạy **trước khi mở phiên Appium** để thiếu biến `AIMTAP_*` báo lỗi đọc được thay vì lỗi Appium khó hiểu — ADR-009 §Hệ quả). US-3.4 (`985f56c`) đã thêm logic guard đúng và có test: `missingCapabilityEnv`/`assertCapabilityEnv` trong `src/runner/cucumber-hooks.ts` kiểm đúng khóa bắt buộc theo `CapabilityKind`, coi rỗng là thiếu, ném `PlatformFailure` liệt kê khóa thiếu.
+
+**Lỗi:** guard được gọi ở `AimtapService.before()` (`src/runner/wdio-service.ts`) → `hooks.onSessionStart()` → `assertCapabilityEnv`. Hook `before(capabilities, specs, browser)` của WDIO chạy **sau** khi phiên đã tạo (xác nhận tài liệu WDIO chính thức: `before` có `browser`, tức phiên đã mở; `onPrepare` chạy trước mọi phiên). Nếu `AIMTAP_APP_PATH`/... rỗng, WDIO tạo phiên với capabilities rỗng → Appium ném lỗi cấp giao thức lúc tạo phiên → worker hỏng → `before` (và guard) không bao giờ chạy. Guard không đạt mục đích; tính chất ADR-009 §Hệ quả không thỏa ở tầng này.
+
+**Cách sửa (thống nhất SA + Team Lead):** phép kiểm hiện diện `AIMTAP_*` có hai vị trí, không loại trừ nhau:
+- **Nhà chính — pha tiền điều kiện CLI (US-4.3):** CLI dựng `AIMTAP_*` từ AppConfig + `DeviceContext` đã validate + secret ký mã, rồi assert đủ khóa bắt buộc theo `CapabilityKind` **trước khi khởi chạy testrunner** — cùng chỗ với `checkEnvironment`/`verifyTestDataComplete`/`ensureReadyBeforeRun` (`sequence-diagrams.md` §1). Đây là nơi kiến trúc đúng: chặn trước cả khi spawn worker, đồng vị với nơi các biến được dựng. `missingCapabilityEnv` đã export ở `src/runner/index.ts`.
+- **Lưới an toàn — `onPrepare()` của `AimtapService` (fix ngay cho US-3.4):** hook launcher chạy trước mọi phiên; gọi `assertCapabilityEnv`. Bảo vệ đường dev chạy thẳng `npx wdio run config/...` (bỏ qua CLI). Đăng ký sink tên màn hình **giữ ở worker `before`** (cần tiến trình worker nơi Locator sống) — tách hai việc.
+- **Bỏ guard khỏi `onSessionStart`/`before`:** ở đó nó chạy sau khi phiên đã tạo nên tạo cảm giác an toàn giả.
+
+Không cần ADR mới (lỗi hiện thực nghịch ADR-009 đã có, không đổi quyết định). `sequence-diagrams.md` §1 nay ghi phép kiểm `AIMTAP_*` trong pha tiền điều kiện CLI và lưới an toàn `onPrepare`.
+
+**Phân rã:**
+- [x] US-3.4 (fix ngay, `ab3b680`) — **SA verified**: `AimtapService.onPrepare()` gọi `assertCapabilityEnv`; guard bỏ khỏi `before`/`onSessionStart`, sink giữ ở `before`; config sim/device đăng ký service kèm `capabilityKind`. Test khẳng định `onPrepare` guard + `before` không guard; gate xanh. Xác nhận WDIO gọi `onPrepare` ở launcher trước phiên: `@wdio/utils` 9.30.0 `initializeLauncherService` khởi tạo service đăng ký **inline dạng class** trong tiến trình launcher (nhánh `typeof service === "function" && !serviceName`), nên launcher hook chạy — quy tắc "phải có `launcher` export riêng" chỉ áp cho service đăng ký bằng tên package. **Không tháo `onPrepare` khỏi class này** dựa trên tài liệu chung.
+- [ ] US-4.3 (nhà chính): assert `AIMTAP_*` trong pha tiền điều kiện CLI trước khi gọi wdio.
+- Đóng open-item khi cả hai phần xong; SA verify.
 
 ---
 
