@@ -53,7 +53,7 @@ Bản ghi kết quả (TestCaseResult, StepLog) chỉ chèn thêm; một lượt
 
 ### Reporter
 **Mục đích:** dựng và xuất báo cáo một tệp.
-**Đầu vào / đầu ra:** `buildReportModel(runId): ReportModel` rồi `render(model, format: 'pdf' | 'png'): string` (đường dẫn tệp dưới `output/<app-id>/reports/`).
+**Đầu vào / đầu ra:** `buildReportModel(runId): ReportModel` rồi `render(model, format: 'pdf' | 'png'): Promise<string>` (đường dẫn tệp dưới `output/<app-id>/reports/<run-id>.<ext>`); render bằng trình duyệt không giao diện nên bất đồng bộ (ADR-012).
 **Liên quan:** FR-REP-01→04, ADR-006, ADR-012.
 
 ---
