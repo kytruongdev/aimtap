@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { buildCucumberOpts, iosCapabilities } from './wdio-service.js';
+import type { CucumberHooks } from './cucumber-hooks.js';
+import {
+  AimtapService,
+  buildCucumberOpts,
+  iosCapabilities,
+  scenarioRef,
+  stepEndRef,
+} from './wdio-service.js';
 
 describe('buildCucumberOpts', () => {
   it('takes the step timeout from the given wait policy, not a hard-coded value', () => {
@@ -59,5 +66,111 @@ describe('iosCapabilities', () => {
     expect(caps['appium:deviceName']).toBe('');
     expect(caps['appium:platformVersion']).toBe('');
     expect(caps['appium:app']).toBe('');
+  });
+});
+
+describe('payload adapters', () => {
+  it('reads the feature and test-case names from the Cucumber world', () => {
+    const ref = scenarioRef({
+      pickle: { name: 'valid credentials' },
+      gherkinDocument: { feature: { name: 'Login' } },
+    });
+
+    expect(ref).toEqual({ test_feature: 'Login', test_case: 'valid credentials' });
+  });
+
+  it('falls back to placeholders when the world is missing names', () => {
+    expect(scenarioRef({})).toEqual({
+      test_feature: 'Unknown feature',
+      test_case: 'Unknown test case',
+    });
+  });
+
+  it('maps a failed step result, keeping the order and error', () => {
+    const error = new Error('boom');
+    const ref = stepEndRef(3, { text: 'I log in' }, { passed: false, duration: 42, error });
+
+    expect(ref).toEqual({
+      order: 3,
+      text: 'I log in',
+      result: 'failed',
+      duration_ms: 42,
+      error,
+    });
+  });
+
+  it('maps a passing step result', () => {
+    const ref = stepEndRef(1, { text: 'I open the app' }, { passed: true, duration: 10 });
+
+    expect(ref).toMatchObject({ order: 1, result: 'passed', duration_ms: 10 });
+  });
+});
+
+describe('AimtapService', () => {
+  function fakeHooks(): CucumberHooks & { calls: string[] } {
+    const calls: string[] = [];
+    return {
+      calls,
+      onSessionStart: () => calls.push('onSessionStart'),
+      beforeScenario: (s) => {
+        calls.push(`beforeScenario:${s.test_case}`);
+        return Promise.resolve();
+      },
+      onStepEnd: (step) => calls.push(`onStepEnd:${step.order}:${step.result}`),
+      afterScenario: (s) => {
+        calls.push(`afterScenario:${s.test_case}`);
+        return Promise.resolve();
+      },
+    };
+  }
+
+  const world = {
+    pickle: { name: 'valid credentials' },
+    gherkinDocument: { feature: { name: 'Login' } },
+  };
+
+  it('delegates the lifecycle to the hooks and numbers steps within a scenario', async () => {
+    const hooks = fakeHooks();
+    const service = new AimtapService(hooks);
+
+    service.before();
+    await service.beforeScenario(world);
+    service.beforeStep();
+    service.afterStep({ text: 'step one' }, undefined, { passed: true, duration: 5 });
+    service.beforeStep();
+    service.afterStep({ text: 'step two' }, undefined, { passed: false, duration: 7 });
+    await service.afterScenario(world);
+
+    expect(hooks.calls).toEqual([
+      'onSessionStart',
+      'beforeScenario:valid credentials',
+      'onStepEnd:1:passed',
+      'onStepEnd:2:failed',
+      'afterScenario:valid credentials',
+    ]);
+  });
+
+  it('resets the step counter at the start of each scenario', async () => {
+    const hooks = fakeHooks();
+    const service = new AimtapService(hooks);
+
+    await service.beforeScenario(world);
+    service.beforeStep();
+    service.afterStep({ text: 'a' }, undefined, { passed: true, duration: 1 });
+    await service.beforeScenario(world);
+    service.beforeStep();
+    service.afterStep({ text: 'b' }, undefined, { passed: true, duration: 1 });
+
+    expect(hooks.calls.filter((c) => c.startsWith('onStepEnd'))).toEqual([
+      'onStepEnd:1:passed',
+      'onStepEnd:1:passed',
+    ]);
+  });
+
+  it('is inert without hooks (session-open logging only)', () => {
+    const service = new AimtapService();
+
+    expect(() => service.before()).not.toThrow();
+    expect(() => service.beforeStep()).not.toThrow();
   });
 });
