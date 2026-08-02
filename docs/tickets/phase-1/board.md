@@ -4,7 +4,7 @@ Phân cấp: **Epic → User Story → Ticket** (`conventions.md`). Mỗi user s
 
 Chẻ theo Phương án A (lát mỏng theo module): 5 epic → 17 user story → 27 ticket, phủ US-01→US-20 (BA).
 
-**Tiến độ (2026-08-02):** 12/17 user story (21/27 ticket) đã merge vào master — US-1.1, US-1.2, US-1.3, US-1.4, US-2.1, US-2.2, US-2.3, US-3.1, US-3.2, US-3.3, US-3.4, US-4.1. **EPIC-1, EPIC-2, EPIC-3 hoàn tất.** US-5.1 (Quy trình rà soát PR) đang làm.
+**Tiến độ (2026-08-02):** 13/17 user story (22/27 ticket) đã merge vào master — US-1.1, US-1.2, US-1.3, US-1.4, US-2.1, US-2.2, US-2.3, US-3.1, US-3.2, US-3.3, US-3.4, US-4.1, US-5.1. **EPIC-1, EPIC-2, EPIC-3 hoàn tất.** Thư viện CLI đã chốt (commander, ADR-017); US-4.2 (Nền CLI + `doctor`) đang làm.
 
 ---
 
@@ -64,7 +64,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 | User story | Phụ thuộc | Song song với | Trạng thái |
 |---|---|---|---|
 | US-1.1 | — | — | **Done** |
-| US-5.1 | US-1.1 | hầu hết | In progress |
+| US-5.1 | US-1.1 | hầu hết | **Done** |
 | US-1.2 | US-1.1 | US-1.3, US-1.4, US-2.1, US-2.2, US-3.3 | **Done** |
 | US-1.3 | US-1.1 | US-1.2, US-1.4, US-2.1, US-2.2, US-3.3 | **Done** |
 | US-1.4 | US-1.1 | US-1.2, US-1.3, US-2.1, US-2.2, US-3.3 | **Done** |
@@ -75,7 +75,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 | US-3.1 | US-1.1, US-1.3 | US-2.3, US-4.1 | **Done** |
 | US-3.2 | US-2.1, US-3.1 | — | **Done** |
 | US-4.1 | US-1.4 | US-3.1, US-4.2 | **Done** |
-| US-4.2 | US-1.1, US-3.1 | US-4.1 | Todo (chờ chốt thư viện CLI) |
+| US-4.2 | US-1.1, US-3.1 | US-4.1 | In progress (commander, ADR-017) |
 | US-3.4 | US-1.4, US-2.1, US-2.3, US-3.1, US-3.2, US-3.3 | — | **Done** |
 | US-4.3 | US-1.2, US-1.3, US-3.1, US-3.4, US-4.1, US-4.2 | — | Todo |
 | US-4.4 | US-4.1, US-4.2 | — | Todo |
@@ -91,7 +91,7 @@ Nội dung ứng dụng thí điểm để nghiệm thu đầu-cuối, và quy t
 7. US-4.3 (`run`) và US-4.4 (`report`).
 8. US-5.2 — thí điểm, nghiệm thu đầu-cuối.
 
-**Còn lại:** US-5.1 (đang làm); Todo — US-4.2, US-4.3, US-4.4, US-5.2. US-4.2 (khung CLI + `doctor`) chờ chốt thư viện CLI — nút chặn EPIC-4 còn lại. US-4.3 (`run`) mở khi US-4.2 xong; US-4.4/US-5.2 nối sau.
+**Còn lại:** US-4.2 (đang làm — commander đã chốt); Todo — US-4.3, US-4.4, US-5.2. US-4.3 (`run`) mở khi US-4.2 xong; US-4.4 (`report`) cần US-4.2; US-5.2 (thí điểm) cần luồng `run` (US-4.3).
 
 ## Phụ thuộc cấp ticket (trong và giữa user story)
 
