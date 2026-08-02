@@ -1,8 +1,9 @@
-import { AimtapService, buildCucumberOpts } from '../src/runner/index.js';
+import { buildCucumberOpts } from '../src/runner/index.js';
 
 // Shared WebdriverIO/Cucumber config (north-star §2.1, ADR-001/007/013). The per-platform configs
-// (wdio.ios.sim.conf.ts, wdio.ios.device.conf.ts) extend this with capabilities. Run from the repo
-// root, e.g. `npx wdio run config/wdio.ios.sim.conf.ts`.
+// (wdio.ios.sim.conf.ts, wdio.ios.device.conf.ts) extend this with capabilities and register
+// AimtapService with the matching capabilityKind, so the onPrepare guard knows which AIMTAP_* keys
+// are required. Run from the repo root, e.g. `npx wdio run config/wdio.ios.sim.conf.ts`.
 //
 // The Appium endpoint defaults to a local Appium 2 server; override with AIMTAP_APPIUM_HOST /
 // AIMTAP_APPIUM_PORT. Per-run device and app values are injected via environment variables read in
@@ -26,7 +27,6 @@ export const config = {
   framework: 'cucumber',
   cucumberOpts: buildCucumberOpts(['apps/*/steps/**/*.steps.ts']),
 
-  services: [[AimtapService, {}]],
   reporters: ['spec'],
   logLevel: 'info',
   injectGlobals: true,
