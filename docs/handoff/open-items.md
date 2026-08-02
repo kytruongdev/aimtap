@@ -21,7 +21,7 @@ Bối cảnh: mở từ review US-3.3 (guard cần chạy **trước khi mở ph
 Không cần ADR mới (lỗi hiện thực nghịch ADR-009 đã có, không đổi quyết định). `sequence-diagrams.md` §1 nay ghi phép kiểm `AIMTAP_*` trong pha tiền điều kiện CLI và lưới an toàn `onPrepare`.
 
 **Phân rã:**
-- [x] US-3.4 (fix ngay): đã làm trên branch `fix/aimtap-guard-onprepare` — `AimtapService.onPrepare()` gọi `assertCapabilityEnv`; guard bỏ khỏi `before`/`onSessionStart`, sink giữ ở `before`; config sim/device đăng ký service kèm `capabilityKind`. Test `AimtapService.onPrepare` khẳng định guard chạy trước-phiên và `before` không guard. Note `board.md` đã chỉnh. Chờ SA verify.
+- [x] US-3.4 (fix ngay, `ab3b680`) — **SA verified**: `AimtapService.onPrepare()` gọi `assertCapabilityEnv`; guard bỏ khỏi `before`/`onSessionStart`, sink giữ ở `before`; config sim/device đăng ký service kèm `capabilityKind`. Test khẳng định `onPrepare` guard + `before` không guard; gate xanh. Xác nhận WDIO gọi `onPrepare` ở launcher trước phiên: `@wdio/utils` 9.30.0 `initializeLauncherService` khởi tạo service đăng ký **inline dạng class** trong tiến trình launcher (nhánh `typeof service === "function" && !serviceName`), nên launcher hook chạy — quy tắc "phải có `launcher` export riêng" chỉ áp cho service đăng ký bằng tên package. **Không tháo `onPrepare` khỏi class này** dựa trên tài liệu chung.
 - [ ] US-4.3 (nhà chính): assert `AIMTAP_*` trong pha tiền điều kiện CLI trước khi gọi wdio.
 - Đóng open-item khi cả hai phần xong; SA verify.
 

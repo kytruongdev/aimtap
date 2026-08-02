@@ -27,6 +27,7 @@ sequenceDiagram
     CLI->>Dev: ensureReadyBeforeRun(AppConfig)
     Dev-->>CLI: DeviceContext (hoặc PlatformFailure: thiết bị/OS/build)
     CLI->>Dev: installBuild()
+    CLI->>CLI: dựng biến môi trường lượt chạy (AIMTAP_*) từ AppConfig + DeviceContext + secret ký mã; assert đủ khóa bắt buộc theo CapabilityKind (hoặc PlatformFailure: khóa thiếu)
     CLI->>WDIO: khởi chạy testrunner (scope → bộ lọc Cucumber, DeviceContext)
     WDIO->>Runner: before (đầu phiên worker)
     Runner->>Runner: sinh run-id
@@ -34,7 +35,7 @@ sequenceDiagram
     Runner-->>CLI: run-id + luồng sự kiện tiến trình
 ```
 
-Điểm thất bại: bất kỳ kiểm tra tiền điều kiện nào không thỏa (host tools, khai báo, dữ liệu kiểm thử thiếu, thiết bị/OS/bản build) làm lượt chạy **không mở**, không sinh bản ghi, không sinh báo cáo; lý do nêu theo từng mục (BR-015, FR-APP-04, UC-06 E1). `checkEnvironment` không kèm target kiểm host tools Node/Xcode/Appium (độc lập ứng dụng); `ensureReadyBeforeRun` sở hữu thiết bị/OS/bản build và trả `DeviceContext` — hai bên không kiểm trùng (§2.2, `component-design.md` §Device & Build Manager). Tập chạy rỗng cũng không mở lượt chạy (UC-06 E2). Tiền điều kiện chạy trong tiến trình CLI trước khi khởi chạy testrunner; `run-id` sinh trong hook `before` ở tiến trình worker và về CLI qua luồng sự kiện, không phải giá trị trả đồng bộ (ADR-013).
+Điểm thất bại: bất kỳ kiểm tra tiền điều kiện nào không thỏa (host tools, khai báo, dữ liệu kiểm thử thiếu, thiết bị/OS/bản build) làm lượt chạy **không mở**, không sinh bản ghi, không sinh báo cáo; lý do nêu theo từng mục (BR-015, FR-APP-04, UC-06 E1). Biến môi trường lượt chạy (`AIMTAP_*`) mà capabilities đọc được dựng và kiểm đủ trong pha tiền điều kiện CLI, trước khi khởi chạy testrunner (ADR-009 §Hệ quả); thiếu khóa bắt buộc thì lượt chạy không mở, phiên Appium không được tạo. Đường chạy testrunner trực tiếp (`wdio run`, bỏ qua CLI) chịu cùng phép assert này qua hook launcher `onPrepare` của WDIO service — hook chạy trước khi phiên được tạo. `checkEnvironment` không kèm target kiểm host tools Node/Xcode/Appium (độc lập ứng dụng); `ensureReadyBeforeRun` sở hữu thiết bị/OS/bản build và trả `DeviceContext` — hai bên không kiểm trùng (§2.2, `component-design.md` §Device & Build Manager). Tập chạy rỗng cũng không mở lượt chạy (UC-06 E2). Tiền điều kiện chạy trong tiến trình CLI trước khi khởi chạy testrunner; `run-id` sinh trong hook `before` ở tiến trình worker và về CLI qua luồng sự kiện, không phải giá trị trả đồng bộ (ADR-013).
 
 ---
 
