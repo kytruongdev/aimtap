@@ -11,7 +11,7 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 **Cấu trúc bên trong:**
 - `commands/run.ts` — lệnh `aimtap run <app-id>`: phân giải tham số (thiết bị, tập chạy theo test feature/tên/nhãn), gọi chuỗi kiểm tra tiền điều kiện rồi Test Runner.
 - `commands/report.ts` — lệnh `aimtap report <run-id>`: gọi Reporter sinh lại báo cáo từ dữ liệu đã lưu, không chạy lại test case.
-- `commands/doctor.ts` — lệnh `aimtap doctor`: gọi `checkEnvironment` (kèm target) của Device & Build Manager.
+- `commands/doctor.ts` — lệnh `aimtap doctor`: gọi `checkEnvironment` (không kèm target — host tools Node/Xcode/Appium, độc lập ứng dụng) của Device & Build Manager.
 - `progress-view.ts` — hiển thị test case đang chạy kèm test feature, số đã hoàn tất trên tổng, trạng thái từng test case (FR-RUN-03, US-10).
 **Phụ thuộc:** App Registry, Config & Secrets, Device & Build Manager, Test Runner, Reporter, Shared.
 **Requirement liên quan:** FR-RUN-01, FR-RUN-02, FR-RUN-03, UC-06.

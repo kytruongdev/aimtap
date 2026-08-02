@@ -25,9 +25,10 @@ Không cần ADR mới (lỗi hiện thực nghịch ADR-009 đã có, không đ
 - [ ] US-4.3 (nhà chính): assert `AIMTAP_*` trong pha tiền điều kiện CLI trước khi gọi wdio.
 - Đóng open-item khi cả hai phần xong; SA verify.
 
----
-
 ## Đã xử lý
+
+### CẦN PRODUCT OWNER DUYỆT: Thư viện CLI cho khung lệnh `aimtap` — *đã xử lý*
+Chốt **commander** ở **ADR-017 (Accepted, Product Owner duyệt)**. Neo ràng buộc dự án (ESM/NodeNext, Node 22, posture ít phụ thuộc, đúng 3 lệnh doctor/run/report, mã thoát test-được): commander zero-dependency + ESM-only v15 + `exitOverride()` khớp trực tiếp AC mã thoát `doctor`; yargs/oclif dư phụ thuộc/kiến trúc cho nhu cầu hiện tại. Đã thêm dòng CLI (commander) vào `north-star.md` §4. Team Lead mở US-4.2 (TICKET-020) ngay; US-4.3/4.4/5.2 nối tiếp. Xem lại theo hướng oclif nếu CLI phình nhiều lệnh/plugin (ADR-017 §Hệ quả).
 
 ### CẦN TEAM-LEAD LÀM: Kiểm tra sự hiện diện `AIMTAP_*` trước khi mở phiên (phát hiện lúc review US-3.3) — *đã xử lý*
 Hành vi US-3.3 giữ nguyên: `iosCapabilities` (`src/runner/wdio-service.ts`) mặc định env thiếu thành chuỗi rỗng là đúng ở tầng này vì US-3.3 cố ý không phụ thuộc build-time vào Config/Device/CLI (ADR-014). Không sửa TICKET-017. Việc kiểm tra sự hiện diện `AIMTAP_*` là điểm wiring cấp ticket, đặt ở US-3.4 (TICKET-018): trước khi phiên Appium mở, dựng biến môi trường capability từ `DeviceContext` đã validate (FR-DEV-02) làm nguồn duy nhất, kiểm tra mọi khóa bắt buộc theo `CapabilityKind`, thiếu thì ném `PlatformFailure` liệt kê khóa thiếu và dừng lượt chạy sớm (ADR-009), không thành test case hỏng (ADR-016) — kèm acceptance criteria. Ghi chú giới hạn phạm vi ở US-1.2 (TICKET-003): `AIMTAP_*` giá trị theo lượt chạy không vào schema tĩnh của Config & Secrets. Điểm đặt chính xác bước dựng/kiểm trong luồng khởi động testrunner là điểm kiểm chứng lúc implement; nếu buộc phải đổi cách CLI ↔ testrunner truyền biến môi trường giữa hai tiến trình thì đẩy về SA. Không chạm khuôn khổ.
