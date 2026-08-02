@@ -321,6 +321,7 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Kiểm thử đơn vị của nền tảng | Vitest | [node:test vs Vitest vs Jest 2026](https://www.pkgpulse.com/guides/node-test-vs-vitest-vs-jest-native-test-runner-2026) | ADR-008 |
 | Cưỡng chế ranh giới module | ESLint + `eslint-plugin-boundaries` | [eslint-plugin-boundaries](https://www.jsboundaries.dev/) | ADR-008 |
 | Lệnh vận hành | `Makefile` | — | ADR-008 |
+| Khung lệnh CLI | commander (v15, ESM-only, zero-dependency) | [commander — npm](https://www.npmjs.com/package/commander) | ADR-017 |
 | Lấy locator | Appium Inspector (công cụ ngoài, QC dùng thủ công) | BRD §6 | — |
 
 ---
