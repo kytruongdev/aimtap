@@ -25,6 +25,28 @@ Không cần ADR mới (lỗi hiện thực nghịch ADR-009 đã có, không đ
 - [ ] US-4.3 (nhà chính): assert `AIMTAP_*` trong pha tiền điều kiện CLI trước khi gọi wdio.
 - Đóng open-item khi cả hai phần xong; SA verify.
 
+### CẦN PRODUCT OWNER DUYỆT: Ranh giới tiến trình CLI ↔ testrunner (khởi chạy / tiến trình / run-id) — SA gỡ ở ADR-018 (Proposed) (chặn US-4.3 launch/progress)
+Phát hiện lúc mở US-4.3. Chuỗi tiền điều kiện và assert `AIMTAP_*` chạy trong tiến trình CLI thì rõ và làm được. Nhưng phần **khởi chạy testrunner + hiển thị tiến trình** đụng ranh giới tiến trình CLI ↔ worker mà thiết kế chưa định nghĩa:
+
+- **`startRun` không tồn tại.** TICKET-021 trỏ `interface-spec.md ... startRun`, nhưng `interface-spec.md` không có interface Test Runner nào cho việc khởi chạy; không có `startRun` trong code lẫn tài liệu. Cần chốt: CLI gọi thẳng `@wdio/cli` `Launcher(configPath).run()`, hay Test Runner phơi một hàm khởi chạy? Đặt ở đâu?
+- **Luồng tiến trình worker → CLI chưa có cơ chế.** `run-session` (TICKET-019) phát `ProgressEvent` qua callback `onProgress` **trong tiến trình worker**; `progress-view` lại đặt ở CLI Entry (`component-design.md` §CLI Entry) và "nhận luồng sự kiện tiến trình từ Test Runner (`startRun`)". Không có cầu nối nào bắc `ProgressEvent` từ worker sang tiến trình CLI. Các khả năng — **thuộc quyết định của SA**:
+  - (a) `progress-view` là một **WDIO reporter tùy biến** chạy trong worker, in tiến trình thẳng ra terminal QC (dùng lại cơ chế báo cáo của testrunner — ADR-013 §Ưu điểm). Khi đó `progress-view` **không** phải bộ tiêu thụ ở tiến trình CLI như `component-design` mô tả.
+  - (b) Gom ở phía launcher qua thông điệp/`onWorkerEnd` của WDIO (thô, theo worker chứ không theo từng test case).
+  - (c) Cơ chế khác (tệp/socket).
+- **run-id cho báo cáo cuối lượt.** `sequence-diagrams.md` §1 ghi `run-id` sinh ở hook `before` trong worker và **về CLI qua luồng sự kiện** (ADR-013). Nếu vậy, CLI cần chính cầu nối chưa-định-nghĩa ở trên mới biết `run-id` để gọi Reporter sinh báo cáo cuối lượt (UC-06 bước 7). Phương án thay thế: CLI **sinh `run-id` và tiêm vào worker qua env** (xác định, đơn giản) — nhưng việc này **đổi TICKET-019** (`run-session` đang tự sinh `run-id`) và nghịch mô tả sequence §1, nên là quyết định thiết kế của SA.
+
+Mâu thuẫn cần SA gỡ: ADR-013 nói "dùng lại cơ chế báo cáo có sẵn của testrunner" (nghiêng về reporter trong worker), còn `component-design` §CLI Entry đặt `progress-view` ở tiến trình CLI tiêu thụ luồng từ `startRun`. Hai chỗ không khớp về nơi `progress-view` sống và cách sự kiện qua ranh giới tiến trình.
+
+**SA xử lý (2026-08-03) → ADR-018 (Proposed).** Kiểm chứng mô hình tiến trình WDIO từ nguồn (Launcher lập trình `@wdio/cli`, reporter chạy trong worker, env kế thừa xuống worker; `run-session` nhận `newRunId` tiêm vào nên không đụng mã đã merge). Chốt hướng gỡ cả ba + mâu thuẫn ADR-013↔component-design:
+1. **Khởi chạy:** CLI = tiến trình launcher; Test Runner phơi `launchRun(options): Promise<RunOutcome>` bọc `new Launcher(configPath,args).run()`. Bỏ `startRun` (không tồn tại).
+2. **Tiến trình:** `progress-view` là **reporter WDIO trong worker** (Phương án a), in per-test ra terminal — dùng lại cơ chế báo cáo testrunner (ADR-013), không cầu nối xuyên tiến trình. `progress-view` rời CLI Entry sang module Test Runner.
+3. **run-id:** CLI sinh `run-id`, tiêm qua env `AIMTAP_RUN_ID`; worker cấp `newRunId` cho `run-session` từ env; CLI dùng chính run-id đó sinh báo cáo cuối lượt (đường của `aimtap report`). Không đổi mã merged.
+
+**ADR-018 → Accepted (2026-08-03).** Product Owner ủy quyền Team Lead rà soát kỹ thuật; Team Lead duyệt: cả ba quyết định (launchRun / reporter worker / run-id qua env) đúng kỹ thuật, gỡ đúng mâu thuẫn ADR-013↔component-design, không đụng mã đã merge (`run-session` vốn nhận `newRunId` tiêm vào). Còn lại:
+- [ ] SA đồng bộ tài liệu tham chiếu: `interface-spec.md` §Test Runner (thêm `launchRun(options): Promise<RunOutcome>`, bỏ `startRun`), `component-design.md` §CLI Entry/§Test Runner (`progress-view` → reporter worker), `sequence-diagrams.md` §1/§3/§4 (run-id CLI qua env; báo cáo cuối lượt do CLI), ghi chú nguồn run-id ở ADR-013.
+- [ ] Team Lead chỉnh TICKET-021/022 theo ADR-018 (`startRun` → `launchRun`; `progress-view` là reporter worker) rồi implement US-4.3.
+Đóng open-item khi cả hai xong; SA verify. Có thể implement song song với việc SA đồng bộ doc (ADR-018 là thiết kế thẩm quyền).
+
 ## Đã xử lý
 
 ### CẦN PRODUCT OWNER DUYỆT: Thư viện CLI cho khung lệnh `aimtap` — *đã xử lý*
