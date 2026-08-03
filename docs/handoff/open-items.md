@@ -25,7 +25,7 @@ Không cần ADR mới (lỗi hiện thực nghịch ADR-009 đã có, không đ
 - [ ] US-4.3 (nhà chính): assert `AIMTAP_*` trong pha tiền điều kiện CLI trước khi gọi wdio.
 - Đóng open-item khi cả hai phần xong; SA verify.
 
-### CẦN PRODUCT OWNER DUYỆT: Ranh giới tiến trình CLI ↔ testrunner (khởi chạy / tiến trình / run-id) — SA gỡ ở ADR-018 (Proposed) (chặn US-4.3 launch/progress)
+### CẦN SA + TEAM-LEAD LÀM: Implement US-4.3 launch/progress theo ADR-018 (**Accepted**) — ranh giới tiến trình CLI ↔ testrunner
 Phát hiện lúc mở US-4.3. Chuỗi tiền điều kiện và assert `AIMTAP_*` chạy trong tiến trình CLI thì rõ và làm được. Nhưng phần **khởi chạy testrunner + hiển thị tiến trình** đụng ranh giới tiến trình CLI ↔ worker mà thiết kế chưa định nghĩa:
 
 - **`startRun` không tồn tại.** TICKET-021 trỏ `interface-spec.md ... startRun`, nhưng `interface-spec.md` không có interface Test Runner nào cho việc khởi chạy; không có `startRun` trong code lẫn tài liệu. Cần chốt: CLI gọi thẳng `@wdio/cli` `Launcher(configPath).run()`, hay Test Runner phơi một hàm khởi chạy? Đặt ở đâu?
@@ -37,7 +37,7 @@ Phát hiện lúc mở US-4.3. Chuỗi tiền điều kiện và assert `AIMTAP_
 
 Mâu thuẫn cần SA gỡ: ADR-013 nói "dùng lại cơ chế báo cáo có sẵn của testrunner" (nghiêng về reporter trong worker), còn `component-design` §CLI Entry đặt `progress-view` ở tiến trình CLI tiêu thụ luồng từ `startRun`. Hai chỗ không khớp về nơi `progress-view` sống và cách sự kiện qua ranh giới tiến trình.
 
-**SA xử lý (2026-08-03) → ADR-018 (Proposed).** Kiểm chứng mô hình tiến trình WDIO từ nguồn (Launcher lập trình `@wdio/cli`, reporter chạy trong worker, env kế thừa xuống worker; `run-session` nhận `newRunId` tiêm vào nên không đụng mã đã merge). Chốt hướng gỡ cả ba + mâu thuẫn ADR-013↔component-design:
+**SA xử lý (2026-08-03) → ADR-018 (Accepted, Product Owner ủy quyền Team Lead duyệt).** Kiểm chứng mô hình tiến trình WDIO từ nguồn (Launcher lập trình `@wdio/cli`, reporter chạy trong worker, env kế thừa xuống worker; `run-session` nhận `newRunId` tiêm vào nên không đụng mã đã merge). Chốt hướng gỡ cả ba + mâu thuẫn ADR-013↔component-design:
 1. **Khởi chạy:** CLI = tiến trình launcher; Test Runner phơi `launchRun(options): Promise<RunOutcome>` bọc `new Launcher(configPath,args).run()`. Bỏ `startRun` (không tồn tại).
 2. **Tiến trình:** `progress-view` là **reporter WDIO trong worker** (Phương án a), in per-test ra terminal — dùng lại cơ chế báo cáo testrunner (ADR-013), không cầu nối xuyên tiến trình. `progress-view` rời CLI Entry sang module Test Runner.
 3. **run-id:** CLI sinh `run-id`, tiêm qua env `AIMTAP_RUN_ID`; worker cấp `newRunId` cho `run-session` từ env; CLI dùng chính run-id đó sinh báo cáo cuối lượt (đường của `aimtap report`). Không đổi mã merged.
