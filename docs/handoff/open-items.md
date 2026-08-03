@@ -22,7 +22,7 @@ Không cần ADR mới (lỗi hiện thực nghịch ADR-009 đã có, không đ
 
 **Phân rã:**
 - [x] US-3.4 (fix ngay, `ab3b680`) — **SA verified**: `AimtapService.onPrepare()` gọi `assertCapabilityEnv`; guard bỏ khỏi `before`/`onSessionStart`, sink giữ ở `before`; config sim/device đăng ký service kèm `capabilityKind`. Test khẳng định `onPrepare` guard + `before` không guard; gate xanh. Xác nhận WDIO gọi `onPrepare` ở launcher trước phiên: `@wdio/utils` 9.30.0 `initializeLauncherService` khởi tạo service đăng ký **inline dạng class** trong tiến trình launcher (nhánh `typeof service === "function" && !serviceName`), nên launcher hook chạy — quy tắc "phải có `launcher` export riêng" chỉ áp cho service đăng ký bằng tên package. **Không tháo `onPrepare` khỏi class này** dựa trên tài liệu chung.
-- [ ] US-4.3 (nhà chính): assert `AIMTAP_*` trong pha tiền điều kiện CLI trước khi gọi wdio.
+- [x] US-4.3 (nhà chính): `launchRun` (`src/runner/launch-run.ts`) dựng `AIMTAP_*` từ AppConfig + DeviceContext đã validate và **assert trước khi gọi wdio** (ADR-009/ADR-018); test khẳng định thiếu khóa → PlatformFailure. `onPrepare` (US-3.4) là lưới an toàn cho đường `wdio run` trực tiếp. Cả hai xong → chờ SA verify để đóng.
 - Đóng open-item khi cả hai phần xong; SA verify.
 
 ### CẦN SA + TEAM-LEAD LÀM: Implement US-4.3 launch/progress theo ADR-018 (**Accepted**) — ranh giới tiến trình CLI ↔ testrunner
@@ -44,7 +44,7 @@ Mâu thuẫn cần SA gỡ: ADR-013 nói "dùng lại cơ chế báo cáo có s�
 
 **ADR-018 → Accepted (2026-08-03).** Product Owner ủy quyền Team Lead rà soát kỹ thuật; Team Lead duyệt: cả ba quyết định (launchRun / reporter worker / run-id qua env) đúng kỹ thuật, gỡ đúng mâu thuẫn ADR-013↔component-design, không đụng mã đã merge (`run-session` vốn nhận `newRunId` tiêm vào). Còn lại:
 - [ ] SA đồng bộ tài liệu tham chiếu: `interface-spec.md` §Test Runner (thêm `launchRun(options): Promise<RunOutcome>`, bỏ `startRun`), `component-design.md` §CLI Entry/§Test Runner (`progress-view` → reporter worker), `sequence-diagrams.md` §1/§3/§4 (run-id CLI qua env; báo cáo cuối lượt do CLI), ghi chú nguồn run-id ở ADR-013.
-- [ ] Team Lead chỉnh TICKET-021/022 theo ADR-018 (`startRun` → `launchRun`; `progress-view` là reporter worker) rồi implement US-4.3.
+- [x] Team Lead chỉnh TICKET-021/022 theo ADR-018 và implement US-4.3 (branch `us/4-3-cli-run-progress`): `launchRun`, `progress-reporter` (reporter worker), `run.ts` (tiền điều kiện + assert + scope + báo cáo cuối lượt), worker `run-assembly` + `AimtapService.after`. 171 test xanh; smoke `aimtap run` reject tiền điều kiện đúng. Chờ SA đồng bộ doc tham chiếu + verify.
 Đóng open-item khi cả hai xong; SA verify. Có thể implement song song với việc SA đồng bộ doc (ADR-018 là thiết kế thẩm quyền).
 
 ## Đã xử lý

@@ -19,7 +19,7 @@ describe('buildProgram', () => {
   it('can register more commands without changing the framework', () => {
     const program = buildProgram();
     const before = program.commands.length;
-    program.command('run');
+    program.command('extra');
 
     expect(program.commands.length).toBe(before + 1);
   });
