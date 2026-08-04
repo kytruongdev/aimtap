@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { doctorCommand } from './commands/doctor.js';
 import { runCommand } from './commands/run.js';
+import { reportCommand } from './commands/report.js';
 
 // TICKET-020: the `aimtap` command framework (ADR-017: commander). Each subcommand is registered as
 // its own unit, so a new command is added with one line and the framework itself is not touched.
@@ -14,7 +15,7 @@ export function buildProgram(): Command {
 
   program.addCommand(doctorCommand());
   program.addCommand(runCommand()); // US-4.3
-  // program.addCommand(reportCommand());  // US-4.4
+  program.addCommand(reportCommand()); // US-4.4
 
   return program;
 }
