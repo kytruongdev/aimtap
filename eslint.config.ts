@@ -18,6 +18,9 @@ export default tseslint.config(
     files: ['src/**/*.ts', 'apps/**/*.ts', 'config/**/*.ts'],
     plugins: { boundaries },
     settings: {
+      // Resolve NodeNext `.js` specifiers to their `.ts` sources so eslint-plugin-boundaries can
+      // classify imports and actually enforce the matrix (without this the rules are inert).
+      'import/resolver': { typescript: { alwaysTryTypes: true } },
       'boundaries/include': ['src/**/*.ts', 'apps/**/*.ts'],
       'boundaries/elements': [
         { type: 'root', mode: 'file', pattern: 'src/index.ts' },

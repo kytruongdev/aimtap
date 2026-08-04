@@ -1,5 +1,5 @@
-// Test Runner — WDIO service, Cucumber hooks, run-session state (reactive model, ADR-013).
-// US-3.3 (TICKET-017): WDIO service + config building blocks. US-3.4 (TICKET-018/019): hooks + session.
+// Test Runner — WDIO service, Cucumber hooks, run-session state, run launch + progress (ADR-013/018).
+// US-3.3: WDIO service + config. US-3.4: hooks + session. US-4.3: launchRun + progress reporter.
 export { AimtapService, buildCucumberOpts, iosCapabilities, scenarioRef, stepEndRef } from './wdio-service.js';
 export type {
   AimtapServiceOptions,
@@ -12,7 +12,6 @@ export { createRunSession } from './run-session.js';
 export type {
   RunSession,
   RunSessionDeps,
-  RunScope,
   ProgressEvent,
   SignalSource,
 } from './run-session.js';
@@ -29,3 +28,14 @@ export type {
   ScenarioRef,
   StepEndRef,
 } from './cucumber-hooks.js';
+
+export {
+  launchRun,
+  buildRunEnv,
+  scopeToLauncherArgs,
+  wdioConfigPath,
+  capabilityKindOf,
+} from './launch-run.js';
+export type { RunScope, RunOutcome, ScopeKind, LaunchRunOptions, LaunchTarget } from './launch-run.js';
+
+export { default as ProgressReporter, ProgressTracker } from './progress-reporter.js';

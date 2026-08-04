@@ -11,7 +11,7 @@ QC khởi chạy một lượt chạy bằng `aimtap run <app-id>`: kiểm tra �
 ## Tickets
 
 ### TICKET-021: `aimtap run` + chuỗi tiền điều kiện + chọn tập
-**Thiết kế liên quan:** component-design.md#CLI-Entry (`commands/run.ts`), interface-spec.md (loadAppConfig, verifyTestDataComplete, ensureReadyBeforeRun, installBuild, startRun), sequence-diagrams.md#1, UC-06 (E1, E2, E3), BR-015, FR-RUN-01, FR-RUN-02
+**Thiết kế liên quan:** component-design.md#CLI-Entry (`commands/run.ts`), interface-spec.md (loadAppConfig, verifyTestDataComplete, ensureReadyBeforeRun, installBuild), runner `launchRun` (ADR-018), sequence-diagrams.md#1, ADR-009, ADR-018, UC-06 (E1, E2, E3), BR-015, FR-RUN-01, FR-RUN-02
 **Phụ thuộc:** TICKET-004, TICKET-005, TICKET-009, TICKET-019, TICKET-025
 
 **Chỉ dẫn code**
@@ -19,7 +19,7 @@ QC khởi chạy một lượt chạy bằng `aimtap run <app-id>`: kiểm tra �
   - Phân giải tham số: thiết bị, tập chạy theo test feature/tên test case/nhãn (US-12 BA).
   - Chuỗi tiền điều kiện theo sequence-diagram §1, đúng thứ tự: `loadAppConfig` → `verifyTestDataComplete` → `ensureReadyBeforeRun` → `installBuild`. Bất kỳ mục nào không thỏa: không mở lượt chạy, không sinh bản ghi, không sinh báo cáo; nêu lý do theo từng mục (UC-06 E1, BR-015).
   - Tập chạy rỗng: không mở, nêu tiêu chí chọn không khớp test case nào (UC-06 E2).
-  - Thỏa hết: gọi `startRun(scope, deviceContext)`; truyền luồng sự kiện tiến trình cho `progress-view` (TICKET-022).
+  - Thỏa hết: CLI sinh `run-id`, dựng + **assert `AIMTAP_*` (nhà chính, ADR-009/ADR-018)** rồi gọi `runner.launchRun({ runId, appConfig, deviceContext, scope, outputDir })` (bọc `@wdio/cli` Launcher, tiêm env `AIMTAP_*`+`AIMTAP_RUN_ID`, dịch scope → spec/tag Cucumber). Tiến trình per-test hiển thị bởi reporter WDIO trong worker (TICKET-022), không phải luồng xuyên tiến trình.
   - Kết thúc lượt chạy: gọi Reporter sinh báo cáo (UC-06 bước 7). Hủy giữa chừng → `stop_reason = cancelled_by_qc` (UC-06 E3).
 - Import qua `index.ts` các module liên quan. Cập nhật `Makefile` đích `run`.
 
@@ -31,12 +31,12 @@ QC khởi chạy một lượt chạy bằng `aimtap run <app-id>`: kiểm tra �
 - [ ] Hủy giữa chừng ghi `stop_reason = cancelled_by_qc` và vẫn sinh báo cáo.
 
 ### TICKET-022: Hiển thị tiến trình lượt chạy
-**Thiết kế liên quan:** component-design.md#CLI-Entry (`progress-view.ts`), sequence-diagrams.md#1, FR-RUN-03, UC-06 (bước 5)
+**Thiết kế liên quan:** runner `progress-reporter.ts` (reporter WDIO worker, ADR-018 Phương án a), sequence-diagrams.md#1, FR-RUN-03, UC-06 (bước 5)
 **Phụ thuộc:** TICKET-019, TICKET-020
 
 **Chỉ dẫn code**
-- `src/cli/progress-view.ts`: nhận luồng sự kiện tiến trình từ Test Runner (`startRun`): test case đang chạy kèm test feature chứa nó, số test case đã hoàn tất trên tổng, trạng thái mỗi test case khi nó kết thúc. Hiển thị cập nhật ngay khi mỗi test case kết thúc, không chờ hết lượt chạy. Trình bày qua lớp CLI; log nội bộ qua `shared/logger.ts`.
-- Cập nhật `src/cli/index.ts` gắn `progress-view` vào lệnh `run`.
+- `src/runner/progress-reporter.ts`: reporter WDIO chạy trong worker (ADR-018) — in test case đang chạy kèm test feature, số đã hoàn tất, và trạng thái mỗi test case ngay khi nó kết thúc (không chờ hết lượt chạy). `ProgressTracker` giữ phần đếm/định dạng thuần (test được); reporter map sự kiện WDIO/Cucumber (feature = suite, scenario = suite lồng) lên tracker.
+- Đăng ký reporter ở `config/wdio.shared.conf.ts` (`reporters`). Không phải bộ tiêu thụ luồng ở tiến trình CLI (gỡ mâu thuẫn ADR-013↔component-design theo ADR-018).
 
 **Acceptance Criteria (cấp code)**
 - [ ] Hiển thị test case đang chạy kèm test feature và số đã hoàn tất/tổng.

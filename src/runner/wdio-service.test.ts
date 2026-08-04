@@ -161,7 +161,7 @@ describe('AimtapService lifecycle delegation', () => {
     const hooks = fakeHooks();
     const service = new AimtapService({ capabilityKind: 'sim', env: simEnv, hooks });
 
-    service.before();
+    await service.before();
     await service.beforeScenario(world);
     service.beforeStep();
     service.afterStep({ text: 'step one' }, undefined, { passed: true, duration: 5 });
@@ -182,6 +182,7 @@ describe('AimtapService lifecycle delegation', () => {
     const hooks = fakeHooks();
     const service = new AimtapService({ capabilityKind: 'sim', env: simEnv, hooks });
 
+    await service.before();
     await service.beforeScenario(world);
     service.beforeStep();
     service.afterStep({ text: 'a' }, undefined, { passed: true, duration: 1 });
@@ -195,10 +196,10 @@ describe('AimtapService lifecycle delegation', () => {
     ]);
   });
 
-  it('is inert without hooks (session-open logging only)', () => {
+  it('after() is safe when no run was assembled (no session)', () => {
     const service = new AimtapService({ capabilityKind: 'sim', env: simEnv });
 
-    expect(() => service.before()).not.toThrow();
+    expect(() => service.after()).not.toThrow();
     expect(() => service.beforeStep()).not.toThrow();
   });
 });

@@ -8,24 +8,20 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
-### CẦN TEAM-LEAD LÀM: Guard hiện diện `AIMTAP_*` đặt sai vòng đời — chạy sau khi phiên đã mở (phát hiện lúc review US-3.4)
-Bối cảnh: mở từ review US-3.3 (guard cần chạy **trước khi mở phiên Appium** để thiếu biến `AIMTAP_*` báo lỗi đọc được thay vì lỗi Appium khó hiểu — ADR-009 §Hệ quả). US-3.4 (`985f56c`) đã thêm logic guard đúng và có test: `missingCapabilityEnv`/`assertCapabilityEnv` trong `src/runner/cucumber-hooks.ts` kiểm đúng khóa bắt buộc theo `CapabilityKind`, coi rỗng là thiếu, ném `PlatformFailure` liệt kê khóa thiếu.
+Không có mục đang mở.
 
-**Lỗi:** guard được gọi ở `AimtapService.before()` (`src/runner/wdio-service.ts`) → `hooks.onSessionStart()` → `assertCapabilityEnv`. Hook `before(capabilities, specs, browser)` của WDIO chạy **sau** khi phiên đã tạo (xác nhận tài liệu WDIO chính thức: `before` có `browser`, tức phiên đã mở; `onPrepare` chạy trước mọi phiên). Nếu `AIMTAP_APP_PATH`/... rỗng, WDIO tạo phiên với capabilities rỗng → Appium ném lỗi cấp giao thức lúc tạo phiên → worker hỏng → `before` (và guard) không bao giờ chạy. Guard không đạt mục đích; tính chất ADR-009 §Hệ quả không thỏa ở tầng này.
-
-**Cách sửa (thống nhất SA + Team Lead):** phép kiểm hiện diện `AIMTAP_*` có hai vị trí, không loại trừ nhau:
-- **Nhà chính — pha tiền điều kiện CLI (US-4.3):** CLI dựng `AIMTAP_*` từ AppConfig + `DeviceContext` đã validate + secret ký mã, rồi assert đủ khóa bắt buộc theo `CapabilityKind` **trước khi khởi chạy testrunner** — cùng chỗ với `checkEnvironment`/`verifyTestDataComplete`/`ensureReadyBeforeRun` (`sequence-diagrams.md` §1). Đây là nơi kiến trúc đúng: chặn trước cả khi spawn worker, đồng vị với nơi các biến được dựng. `missingCapabilityEnv` đã export ở `src/runner/index.ts`.
-- **Lưới an toàn — `onPrepare()` của `AimtapService` (fix ngay cho US-3.4):** hook launcher chạy trước mọi phiên; gọi `assertCapabilityEnv`. Bảo vệ đường dev chạy thẳng `npx wdio run config/...` (bỏ qua CLI). Đăng ký sink tên màn hình **giữ ở worker `before`** (cần tiến trình worker nơi Locator sống) — tách hai việc.
-- **Bỏ guard khỏi `onSessionStart`/`before`:** ở đó nó chạy sau khi phiên đã tạo nên tạo cảm giác an toàn giả.
-
-Không cần ADR mới (lỗi hiện thực nghịch ADR-009 đã có, không đổi quyết định). `sequence-diagrams.md` §1 nay ghi phép kiểm `AIMTAP_*` trong pha tiền điều kiện CLI và lưới an toàn `onPrepare`.
-
-**Phân rã:**
-- [x] US-3.4 (fix ngay, `ab3b680`) — **SA verified**: `AimtapService.onPrepare()` gọi `assertCapabilityEnv`; guard bỏ khỏi `before`/`onSessionStart`, sink giữ ở `before`; config sim/device đăng ký service kèm `capabilityKind`. Test khẳng định `onPrepare` guard + `before` không guard; gate xanh. Xác nhận WDIO gọi `onPrepare` ở launcher trước phiên: `@wdio/utils` 9.30.0 `initializeLauncherService` khởi tạo service đăng ký **inline dạng class** trong tiến trình launcher (nhánh `typeof service === "function" && !serviceName`), nên launcher hook chạy — quy tắc "phải có `launcher` export riêng" chỉ áp cho service đăng ký bằng tên package. **Không tháo `onPrepare` khỏi class này** dựa trên tài liệu chung.
-- [ ] US-4.3 (nhà chính): assert `AIMTAP_*` trong pha tiền điều kiện CLI trước khi gọi wdio.
-- Đóng open-item khi cả hai phần xong; SA verify.
+---
 
 ## Đã xử lý
+
+### CẦN TEAM-LEAD LÀM: Cưỡng chế ranh giới module + hai cạnh vi phạm ma trận (US-4.3) — *đã xử lý*
+Sửa ở `fe1d1ed`, **SA verified thực nghiệm**: (A) `eslint-import-resolver-typescript` + `settings['import/resolver']` — probe `cli→store` cố ý sai nay báo lỗi `boundaries/element-types`; ma trận ADR-002/014 cưỡng chế thật (bắt cả type-import). (B) `src/reporter/generate-report.ts` `generateReport(appId,runId,outputDir,format)`; CLI gọi Reporter, bỏ import store. (C) `launchRun` nhận `LaunchTarget` cấu trúc trong runner, không import `AppConfig` từ registry. Mã thật pass lint với hàng rào sống; tsc 0; 171/171 test. `component-design.md` §Reporter/§Test Runner cập nhật.
+
+### CẦN TEAM-LEAD LÀM: Guard hiện diện `AIMTAP_*` (US-3.4 onPrepare + US-4.3 launchRun) — *đã xử lý*
+Cả hai vị trí đã SA verified: [x] US-3.4 `AimtapService.onPrepare` (`ab3b680`) là lưới an toàn cho đường `wdio run` trực tiếp (WDIO gọi launcher hook trên class inline — `@wdio/utils` 9.30.0); [x] US-4.3 `launchRun` (`f3a04dc`) chạy `assertCapabilityEnv` trong tiến trình CLI trước khi tạo Launcher (nhà chính, ADR-009/018). Guard bỏ khỏi `before` (chạy sau phiên). Đúng ADR-009 §Hệ quả.
+
+### CẦN SA + TEAM-LEAD LÀM: Implement US-4.3 launch/progress theo ADR-018 — *đã xử lý*
+ADR-018 (Accepted) gỡ ba điểm + mâu thuẫn ADR-013↔component-design: (1) `launchRun` bọc `@wdio/cli` Launcher (CLI=launcher); (2) tiến trình per-test = reporter WDIO trong worker (`progress-reporter.ts`), bỏ `progress-view` khỏi CLI; (3) run-id do CLI sinh + tiêm env `AIMTAP_RUN_ID`, worker dùng, CLI sinh báo cáo cuối lượt. Team Lead implement (`f3a04dc`/`fe1d1ed`), SA verify. [x] SA đồng bộ doc tham chiếu: `interface-spec.md` §Test Runner (`launchRun`), `component-design.md` §CLI Entry/§Test Runner/§Reporter, `sequence-diagrams.md` §1, `north-star.md` §2.1, ghi chú nguồn run-id ở ADR-013.
 
 ### CẦN PRODUCT OWNER DUYỆT: Thư viện CLI cho khung lệnh `aimtap` — *đã xử lý*
 Chốt **commander** ở **ADR-017 (Accepted, Product Owner duyệt)**. Neo ràng buộc dự án (ESM/NodeNext, Node 22, posture ít phụ thuộc, đúng 3 lệnh doctor/run/report, mã thoát test-được): commander zero-dependency + ESM-only v15 + `exitOverride()` khớp trực tiếp AC mã thoát `doctor`; yargs/oclif dư phụ thuộc/kiến trúc cho nhu cầu hiện tại. Đã thêm dòng CLI (commander) vào `north-star.md` §4. Team Lead mở US-4.2 (TICKET-020) ngay; US-4.3/4.4/5.2 nối tiếp. Xem lại theo hướng oclif nếu CLI phình nhiều lệnh/plugin (ADR-017 §Hệ quả).

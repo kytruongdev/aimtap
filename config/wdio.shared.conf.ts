@@ -1,4 +1,4 @@
-import { buildCucumberOpts } from '../src/runner/index.js';
+import { buildCucumberOpts, ProgressReporter } from '../src/runner/index.js';
 
 // Shared WebdriverIO/Cucumber config (north-star §2.1, ADR-001/007/013). The per-platform configs
 // (wdio.ios.sim.conf.ts, wdio.ios.device.conf.ts) extend this with capabilities and register
@@ -27,7 +27,7 @@ export const config = {
   framework: 'cucumber',
   cucumberOpts: buildCucumberOpts(['apps/*/steps/**/*.steps.ts']),
 
-  reporters: ['spec'],
+  reporters: ['spec', [ProgressReporter, {}]],
   logLevel: 'info',
   injectGlobals: true,
 };

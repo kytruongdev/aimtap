@@ -26,6 +26,13 @@
 - `probeDuringRun(session): 'ready' | 'unavailable'` — probe nhẹ trên phiên đang mở (ADR-010), xem §Tích hợp ngoài.
 **Liên quan:** FR-DEV-01→04, BR-015, BR-018.
 
+### Test Runner
+**Mục đích:** khởi chạy testrunner từ tiến trình CLI/launcher và trả kết quả lượt chạy.
+**Đầu vào / đầu ra:**
+- `launchRun(options): Promise<RunOutcome>` — bọc `@wdio/cli` Launcher (ADR-018). `options` gồm `runId` (CLI sinh), `target` (view cấu trúc của khai báo ứng dụng: `appId`/`buildPath`/`deviceType`/`deviceId` — không phụ thuộc Registry), `deviceContext`, `scope`, `outputDir`. Dựng env `AIMTAP_*` + `AIMTAP_RUN_ID`, assert đủ khóa theo `CapabilityKind` **trước khi** wdio khởi chạy (ADR-009), dịch `scope` thành bộ lọc spec/tag Cucumber. `RunOutcome` gồm `runId` và `exitCode`.
+- `run-id` do CLI sinh và tiêm xuống worker qua env `AIMTAP_RUN_ID`; worker không sinh mới (ADR-018).
+**Liên quan:** FR-RUN-01→06, UC-06, ADR-013, ADR-018.
+
 ### Locator Resolver
 **Mục đích:** điểm duy nhất tìm phần tử; mang tên màn hình phục vụ bằng chứng.
 **Đầu vào / đầu ra:** `find(locator: Locator, screenName: string): Element` — tìm phần tử qua phiên WebdriverIO toàn cục, chờ có điều kiện theo `wait-policy`; ném lỗi không tìm thấy khi hết thời gian chờ. `screenName` do Page Object truyền vào, đẩy qua sink do Test Runner tiêm lúc mở phiên (ADR-014) — Locator không import Test Runner; Test Runner ghi nhận làm màn hình hiện tại (ADR-011).

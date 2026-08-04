@@ -7,12 +7,12 @@ Danh sách tệp dưới mỗi module là tệp đại diện, không phải dan
 ---
 
 ## CLI Entry
-**Trách nhiệm:** Nhận lệnh của QC, khởi động một lượt chạy và hiển thị tiến trình.
+**Trách nhiệm:** Nhận lệnh của QC và khởi động một lượt chạy (khung lệnh commander, ADR-017).
 **Cấu trúc bên trong:**
-- `commands/run.ts` — lệnh `aimtap run <app-id>`: phân giải tham số (thiết bị, tập chạy theo test feature/tên/nhãn), gọi chuỗi kiểm tra tiền điều kiện rồi Test Runner.
-- `commands/report.ts` — lệnh `aimtap report <run-id>`: gọi Reporter sinh lại báo cáo từ dữ liệu đã lưu, không chạy lại test case.
+- `commands/run.ts` — lệnh `aimtap run <app-id>`: phân giải tham số (tập chạy theo test feature/tên/nhãn → scope), chạy chuỗi tiền điều kiện, sinh `run-id`, gọi `runner.launchRun` (khởi chạy testrunner), rồi `reporter.generateReport` sinh báo cáo cuối lượt.
+- `commands/report.ts` — lệnh `aimtap report <run-id>`: gọi `reporter.generateReport` sinh lại báo cáo từ dữ liệu đã lưu, không chạy lại test case.
 - `commands/doctor.ts` — lệnh `aimtap doctor`: gọi `checkEnvironment` (không kèm target — host tools Node/Xcode/Appium, độc lập ứng dụng) của Device & Build Manager.
-- `progress-view.ts` — hiển thị test case đang chạy kèm test feature, số đã hoàn tất trên tổng, trạng thái từng test case (FR-RUN-03, US-10).
+- Hiển thị tiến trình per-test là một reporter WDIO chạy trong worker (§Test Runner `progress-reporter.ts`, ADR-018), không phải bộ tiêu thụ luồng ở tiến trình CLI.
 **Phụ thuộc:** App Registry, Config & Secrets, Device & Build Manager, Test Runner, Reporter, Shared.
 **Requirement liên quan:** FR-RUN-01, FR-RUN-02, FR-RUN-03, UC-06.
 
@@ -47,9 +47,12 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 ## Test Runner
 **Trách nhiệm:** Thực thi test case được chọn, quản lý vòng đời phiên Appium, phát sự kiện bước/test case, điều phối probe thiết bị và điều kiện dừng. WebdriverIO/Cucumber điều khiển việc lặp qua test case; nền tảng phản ứng qua hook vòng đời (ADR-013).
 **Cấu trúc bên trong:**
-- `run-session.ts` — trạng thái và điều phối một lượt chạy trong tiến trình worker: sinh `run-id`, giữ trạng thái tổng hợp và cờ dừng, quyết định khi probe trả `unavailable` hoặc khi QC hủy. `saveRunStart` chạy ở hook `before`, `finalizeRun` (trạng thái tổng hợp, BR-011) ở hook `after` (ADR-013). Không tự lặp qua test case.
+- `run-session.ts` — trạng thái và điều phối một lượt chạy trong tiến trình worker: giữ trạng thái tổng hợp và cờ dừng, quyết định khi probe trả `unavailable` hoặc khi QC hủy. `run-id` do CLI sinh và tiêm qua env `AIMTAP_RUN_ID` (ADR-018); run-session nhận nó qua `newRunId` tiêm vào, không tự sinh. `saveRunStart` chạy ở hook `before`, `finalizeRun` (trạng thái tổng hợp, BR-011) ở hook `after` (ADR-013). Không tự lặp qua test case.
 - `cucumber-hooks.ts` — handler vòng đời: `beforeScenario` gọi `probeDuringRun` (ADR-010); nếu cờ dừng đã bật hoặc probe trả `unavailable` thì bỏ qua test case và không sinh bản ghi (BR-012, BR-018). Test case `failed` không bật cờ dừng (BR-002). `beforeStep`/`afterStep`/`afterScenario` chuyển sự kiện tới Evidence Collector. Tiêm sink tên màn hình vào Locator Resolver lúc mở phiên (ADR-014) và giữ "màn hình hiện tại" (ADR-011).
-- `wdio-service.ts` — gắn nền tảng vào WebdriverIO testrunner; đăng ký các hook trên và mở phiên Appium một lần cho mỗi lượt chạy.
+- `wdio-service.ts` — gắn nền tảng vào WebdriverIO testrunner; `onPrepare` (launcher) chạy guard hiện diện `AIMTAP_*` trước phiên (ADR-009/018), `before` lắp ráp cộng tác viên worker và mở lượt chạy (`session.start`), `after` gọi `finalizeRun`.
+- `launch-run.ts` — `launchRun(options): Promise<RunOutcome>` bọc `@wdio/cli` Launcher (ADR-018): dựng env `AIMTAP_*` từ một target cấu trúc (`LaunchTarget`, khai báo trong runner để không phụ thuộc Registry — như Device dùng `AppEnvironmentTarget`) cộng `DeviceContext`, chạy guard `AIMTAP_*` chính thức trước khi wdio khởi động, dịch scope thành bộ lọc spec/tag, trả `run-id` + mã thoát.
+- `run-assembly.ts` — lắp ráp phía worker (gọi ở hook `before`, nơi có phiên WebdriverIO toàn cục): dựng lại bối cảnh từ env CLI tiêm, mở Result Store của ứng dụng, nối Evidence Collector, run-session và Cucumber hooks.
+- `progress-reporter.ts` — reporter WDIO chạy trong worker, in tiến trình từng test case ra terminal (ADR-018 Phương án a; dùng lại cơ chế báo cáo của testrunner, ADR-013).
 - Hủy bởi QC: bắt tín hiệu ngắt (SIGINT) trong worker, bật cờ dừng với `stop_reason = cancelled_by_qc`; test case còn lại bị bỏ qua, `finalizeRun` đánh dấu `incomplete` (ADR-013).
 **Phụ thuộc:** WebdriverIO, Cucumber, Appium, Device & Build Manager, Locator Resolver, Evidence Collector, Result Store, Shared.
 **Requirement liên quan:** FR-RUN-01→06, FR-EXEC-01, FR-EXEC-07, UC-06, UC-07.
@@ -86,8 +89,9 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 **Trách nhiệm:** Sinh báo cáo một tệp của một lượt chạy (ADR-006).
 **Cấu trúc bên trong:**
 - `report-model.ts` — dựng mô hình báo cáo từ Result Store: bối cảnh lượt chạy, bảng tóm tắt nhóm theo test feature, chi tiết mỗi test case hỏng.
-- `templates/` — mẫu HTML/CSS do nền tảng kiểm soát.
-- `render.ts` — dựng HTML rồi xuất PNG/PDF bằng trình duyệt không giao diện (ADR-012).
+- `report-html.ts` — dựng tài liệu HTML một tệp từ mô hình; escape mọi giá trị nội suy.
+- `render.ts` — xuất HTML thành một tệp PNG/PDF bằng trình duyệt không giao diện (ADR-012).
+- `generate-report.ts` — điểm vào dàn dựng báo cáo: mở Result Store, dựng mô hình, render thành tệp. CLI (`aimtap run` cuối lượt) và `aimtap report <run-id>` (US-4.4) gọi hàm này; việc mở Store nằm trong Reporter (`reporter → store`), không phải trong CLI.
 **Phụ thuộc:** Result Store, công cụ PDF (ADR-012), Shared.
 **Requirement liên quan:** FR-REP-01→04, BR-012, UC-08, UC-09.
 

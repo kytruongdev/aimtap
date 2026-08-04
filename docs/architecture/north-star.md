@@ -99,7 +99,6 @@ aimtap/
 │   │
 │   ├── cli/                              # CLI Entry
 │   │   ├── index.ts                      # đăng ký lệnh, phân giải tham số dòng lệnh
-│   │   ├── progress-view.ts              # hiển thị tiến trình lượt chạy trên màn hình
 │   │   └── commands/
 │   │       ├── run.ts                    # `aimtap run <app-id>` — khởi chạy một lượt chạy
 │   │       ├── report.ts                 # `aimtap report <run-id>` — sinh lại báo cáo từ dữ liệu đã lưu
@@ -118,9 +117,12 @@ aimtap/
 │   │   └── index.ts
 │   │
 │   ├── runner/                           # Test Runner
-│   │   ├── run-session.ts                # vòng đời một lượt chạy: sinh run-id, mở/đóng phiên, gom kết quả
+│   │   ├── run-session.ts                # trạng thái/điều phối một lượt chạy trong worker (run-id nhận từ env)
 │   │   ├── cucumber-hooks.ts             # móc vào vòng đời Cucumber: beforeScenario, beforeStep, afterStep
-│   │   ├── wdio-service.ts               # WDIO service gắn nền tảng vào testrunner
+│   │   ├── wdio-service.ts               # WDIO service: onPrepare guard, before lắp ráp+start, after finalize
+│   │   ├── launch-run.ts                 # launchRun: bọc @wdio/cli Launcher, dựng env AIMTAP_*, assert trước phiên (ADR-018)
+│   │   ├── run-assembly.ts               # lắp ráp cộng tác viên worker ở hook before (ADR-018)
+│   │   ├── progress-reporter.ts          # reporter WDIO in tiến trình per-test ra terminal (ADR-018)
 │   │   └── index.ts
 │   │
 │   ├── locator/                          # Locator Resolver
@@ -145,8 +147,9 @@ aimtap/
 │   │
 │   ├── reporter/                         # Reporter
 │   │   ├── report-model.ts               # dựng mô hình báo cáo từ Result Store
-│   │   ├── templates/                    # mẫu báo cáo
-│   │   ├── render.ts                     # xuất ra tệp đính Jira (ADR-006)
+│   │   ├── report-html.ts                # dựng tài liệu HTML một tệp từ mô hình
+│   │   ├── render.ts                     # xuất HTML thành một tệp PNG/PDF (ADR-012)
+│   │   ├── generate-report.ts            # điểm vào: mở Store + dựng mô hình + render (CLI & `report` gọi)
 │   │   └── index.ts
 │   │
 │   ├── config/                           # Config & Secrets

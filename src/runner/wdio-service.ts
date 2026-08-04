@@ -1,6 +1,7 @@
 import { getWaitPolicy, logger, type WaitPolicy } from '../shared/index.js';
 import { assertCapabilityEnv } from './cucumber-hooks.js';
 import type { CucumberHooks, ScenarioRef, StepEndRef } from './cucumber-hooks.js';
+import type { RunSession } from './run-session.js';
 
 // TICKET-017: WDIO service + the WebdriverIO/Cucumber config building blocks (ADR-001, ADR-007,
 // ADR-013). The platform attaches to the WebdriverIO testrunner as a service; WebdriverIO/Cucumber
@@ -141,27 +142,46 @@ export interface AimtapServiceOptions {
 export class AimtapService {
   private readonly capabilityKind: CapabilityKind;
   private readonly env: NodeJS.ProcessEnv;
-  private readonly hooks: CucumberHooks | undefined;
+  private readonly injectedHooks: CucumberHooks | undefined;
+  private activeHooks: CucumberHooks | undefined;
+  private session: RunSession | undefined;
   private stepOrder = 0;
 
   constructor(options: AimtapServiceOptions) {
     this.capabilityKind = options.capabilityKind;
     this.env = options.env ?? process.env;
-    this.hooks = options.hooks;
+    this.injectedHooks = options.hooks;
   }
 
   onPrepare(): void {
     assertCapabilityEnv(this.capabilityKind, this.env);
   }
 
-  before(): void {
+  async before(): Promise<void> {
     logger.info('appium session opened for the run');
-    this.hooks?.onSessionStart();
+    if (this.injectedHooks !== undefined) {
+      // Test/wiring path: the hooks are provided directly.
+      this.activeHooks = this.injectedHooks;
+      this.activeHooks.onSessionStart();
+      return;
+    }
+    // Real run: assemble the worker collaborators from the inherited env and open the run (ADR-018).
+    const { assembleWorkerRun } = await import('./run-assembly.js');
+    const { session, hooks } = assembleWorkerRun(this.env);
+    this.session = session;
+    this.activeHooks = hooks;
+    session.start();
+    hooks.onSessionStart();
+  }
+
+  after(): void {
+    // `after` runs at the end of the worker session: finalize the run summary (ADR-013, TICKET-019).
+    this.session?.finalize();
   }
 
   async beforeScenario(world: CucumberWorld): Promise<void> {
     this.stepOrder = 0;
-    await this.hooks?.beforeScenario(scenarioRef(world));
+    await this.activeHooks?.beforeScenario(scenarioRef(world));
   }
 
   beforeStep(): void {
@@ -169,10 +189,10 @@ export class AimtapService {
   }
 
   afterStep(step: CucumberStep, _scenario: unknown, result: StepResultPayload): void {
-    this.hooks?.onStepEnd(stepEndRef(this.stepOrder, step, result));
+    this.activeHooks?.onStepEnd(stepEndRef(this.stepOrder, step, result));
   }
 
   async afterScenario(world: CucumberWorld): Promise<void> {
-    await this.hooks?.afterScenario(scenarioRef(world));
+    await this.activeHooks?.afterScenario(scenarioRef(world));
   }
 }
