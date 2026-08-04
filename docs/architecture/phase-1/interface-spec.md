@@ -60,7 +60,10 @@ Bản ghi kết quả (TestCaseResult, StepLog) chỉ chèn thêm; một lượt
 
 ### Reporter
 **Mục đích:** dựng và xuất báo cáo một tệp.
-**Đầu vào / đầu ra:** `buildReportModel(runId): ReportModel` rồi `render(model, format: 'pdf' | 'png'): Promise<string>` (đường dẫn tệp dưới `output/<app-id>/reports/<run-id>.<ext>`); render bằng trình duyệt không giao diện nên bất đồng bộ (ADR-012).
+**Đầu vào / đầu ra:**
+- `buildReportModel(runId): ReportModel` rồi `render(model, format: 'pdf' | 'png'): Promise<string>` (đường dẫn tệp dưới `output/<app-id>/reports/<run-id>.<ext>`); render bằng trình duyệt không giao diện nên bất đồng bộ (ADR-012).
+- `generateReport(appId, runId, outputDir, format): Promise<string>` — điểm vào dàn dựng (mở Store + dựng mô hình + render); CLI cuối lượt chạy gọi (US-4.3).
+- `generateReportForRun(runId, outputDir, format): Promise<string>` — phân giải ứng dụng giữ lượt chạy (Store theo từng ứng dụng) rồi render; `aimtap report <run-id>` gọi (US-4.4); `run-id` không tồn tại ⇒ `PlatformFailure`, không tạo tệp. Việc mở Store nằm trong Reporter (`cli → reporter → store`, ADR-014).
 **Liên quan:** FR-REP-01→04, ADR-006, ADR-012.
 
 ---
