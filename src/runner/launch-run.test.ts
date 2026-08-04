@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { isPlatformFailure } from '../shared/index.js';
-import type { AppConfig } from '../registry/index.js';
+import type { LaunchTarget } from './launch-run.js';
 import type { DeviceContext } from '../device/index.js';
 import {
   buildRunEnv,
@@ -11,12 +11,11 @@ import {
   type RunScope,
 } from './launch-run.js';
 
-const simApp: AppConfig = {
+const simApp: LaunchTarget = {
   appId: 'demo',
   buildPath: '/builds/demo.app',
   deviceType: 'simulator',
   deviceId: 'iPhone 15',
-  osVersion: '17.5',
 };
 const device: DeviceContext = {
   device_id: 'iPhone 15',
@@ -51,7 +50,7 @@ describe('pure helpers', () => {
   });
 
   it('adds udid and signing identity for a real device from the ambient env', () => {
-    const realApp: AppConfig = { ...simApp, deviceType: 'real', deviceId: '00008110-000' };
+    const realApp: LaunchTarget = { ...simApp, deviceType: 'real', deviceId: '00008110-000' };
     const env = buildRunEnv('run-1', realApp, device, '/out', { AIMTAP_XCODE_ORG_ID: 'ABCDE12345' });
     expect(env.AIMTAP_UDID).toBe('00008110-000');
     expect(env.AIMTAP_XCODE_ORG_ID).toBe('ABCDE12345');
@@ -76,7 +75,7 @@ describe('launchRun', () => {
 
     const outcome = await launchRun({
       runId: 'run-1',
-      appConfig: simApp,
+      target: simApp,
       deviceContext: device,
       scope: fullScope,
       outputDir: '/out',
@@ -94,13 +93,13 @@ describe('launchRun', () => {
   });
 
   it('fails early when a required capability variable cannot be built (real device, no signing)', async () => {
-    const realApp: AppConfig = { ...simApp, deviceType: 'real', deviceId: '00008110-000' };
+    const realApp: LaunchTarget = { ...simApp, deviceType: 'real', deviceId: '00008110-000' };
     const makeLauncher = vi.fn();
 
     await expect(
       launchRun({
         runId: 'run-1',
-        appConfig: realApp,
+        target: realApp,
         deviceContext: { ...device, device_type: 'real' },
         scope: fullScope,
         outputDir: '/out',

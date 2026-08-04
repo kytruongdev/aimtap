@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { AppConfig } from '../registry/index.js';
+import type { DeviceType } from '../shared/index.js';
 import type { DeviceContext } from '../device/index.js';
 import { assertCapabilityEnv } from './cucumber-hooks.js';
 import type { CapabilityKind } from './wdio-service.js';
@@ -7,10 +7,22 @@ import type { CapabilityKind } from './wdio-service.js';
 // TICKET-021 (ADR-018): the CLI is the WDIO launcher process. launchRun wraps `@wdio/cli` Launcher so
 // the WDIO details stay inside the Test Runner module. It generates nothing: the CLI passes the
 // run-id it already created (injected to the worker via AIMTAP_RUN_ID, ADR-018), builds the per-run
-// AIMTAP_* capability env from the AppConfig + validated DeviceContext, runs the authoritative
-// presence guard before wdio starts (ADR-009), translates the scope to Cucumber spec/tag filters,
-// and returns the run-id and exit code. The pure helpers are unit-tested; the Launcher call itself is
-// verified when a real run executes (conventions §3.1).
+// AIMTAP_* capability env from the target + validated DeviceContext, runs the authoritative presence
+// guard before wdio starts (ADR-009), translates the scope to Cucumber spec/tag filters, and returns
+// the run-id and exit code. The pure helpers are unit-tested; the Launcher call itself is verified
+// when a real run executes (conventions §3.1).
+
+/**
+ * Structural view of the app declaration launchRun needs — declared here so `runner` does not depend
+ * on `registry` (ADR-014), the way Device uses AppEnvironmentTarget (environment-check.ts). The CLI
+ * passes its AppConfig, which is structurally compatible.
+ */
+export interface LaunchTarget {
+  appId: string;
+  buildPath: string;
+  deviceType: DeviceType;
+  deviceId: string;
+}
 
 export type ScopeKind = 'full_suite' | 'subset';
 
@@ -37,7 +49,7 @@ export interface LauncherLike {
 
 export interface LaunchRunOptions {
   runId: string;
-  appConfig: AppConfig;
+  target: LaunchTarget;
   deviceContext: DeviceContext;
   scope: RunScope;
   outputDir: string;
@@ -47,7 +59,7 @@ export interface LaunchRunOptions {
   makeLauncher?: (configPath: string, args: Record<string, unknown>) => LauncherLike | Promise<LauncherLike>;
 }
 
-export function capabilityKindOf(deviceType: AppConfig['deviceType']): CapabilityKind {
+export function capabilityKindOf(deviceType: DeviceType): CapabilityKind {
   return deviceType === 'real' ? 'device' : 'sim';
 }
 
@@ -56,7 +68,7 @@ function defaultConfigDir(): string {
 }
 
 export function wdioConfigPath(
-  deviceType: AppConfig['deviceType'],
+  deviceType: DeviceType,
   configDir: string = defaultConfigDir(),
 ): string {
   const file = deviceType === 'real' ? 'wdio.ios.device.conf.ts' : 'wdio.ios.sim.conf.ts';
@@ -66,21 +78,21 @@ export function wdioConfigPath(
 /** Per-run capability env the worker reads (US-3.3 keys) plus run-id and output dir (ADR-018). */
 export function buildRunEnv(
   runId: string,
-  appConfig: AppConfig,
+  target: LaunchTarget,
   deviceContext: DeviceContext,
   outputDir: string,
   base: NodeJS.ProcessEnv = {},
 ): Record<string, string> {
   const env: Record<string, string> = {
     AIMTAP_RUN_ID: runId,
-    AIMTAP_APP_ID: appConfig.appId,
+    AIMTAP_APP_ID: target.appId,
     AIMTAP_OUTPUT_DIR: outputDir,
-    AIMTAP_DEVICE_NAME: appConfig.deviceId,
+    AIMTAP_DEVICE_NAME: target.deviceId,
     AIMTAP_PLATFORM_VERSION: deviceContext.os_version,
-    AIMTAP_APP_PATH: appConfig.buildPath,
+    AIMTAP_APP_PATH: target.buildPath,
   };
-  if (appConfig.deviceType === 'real') {
-    env.AIMTAP_UDID = appConfig.deviceId;
+  if (target.deviceType === 'real') {
+    env.AIMTAP_UDID = target.deviceId;
     // The signing identity is a secret from the ambient environment; the guard below fails the run
     // early with a readable message when it is missing.
     const org = base.AIMTAP_XCODE_ORG_ID;
@@ -107,16 +119,16 @@ async function defaultLauncher(configPath: string, args: Record<string, unknown>
 
 export async function launchRun(opts: LaunchRunOptions): Promise<RunOutcome> {
   const ambient = opts.env ?? process.env;
-  const runEnv = buildRunEnv(opts.runId, opts.appConfig, opts.deviceContext, opts.outputDir, ambient);
+  const runEnv = buildRunEnv(opts.runId, opts.target, opts.deviceContext, opts.outputDir, ambient);
 
   // Authoritative AIMTAP_* presence guard, in the CLI/launcher process before wdio starts
   // (ADR-009, ADR-018) — the primary check the US-3.4 onPrepare guard backstops.
-  assertCapabilityEnv(capabilityKindOf(opts.appConfig.deviceType), { ...ambient, ...runEnv });
+  assertCapabilityEnv(capabilityKindOf(opts.target.deviceType), { ...ambient, ...runEnv });
 
   // Run context the worker reads to rebuild the DeviceContext and scope for run-session (ADR-018).
   const contextEnv: Record<string, string> = {
     AIMTAP_APP_VERSION: opts.deviceContext.app_version,
-    AIMTAP_DEVICE_TYPE: opts.appConfig.deviceType,
+    AIMTAP_DEVICE_TYPE: opts.target.deviceType,
     AIMTAP_SCOPE_KIND: opts.scope.kind,
   };
   if (opts.scope.criteria !== null) contextEnv.AIMTAP_SCOPE_CRITERIA = opts.scope.criteria;
@@ -124,7 +136,7 @@ export async function launchRun(opts: LaunchRunOptions): Promise<RunOutcome> {
   // Inject the per-run env; the worker inherits it and reads it in capabilities and run assembly.
   for (const [key, value] of Object.entries({ ...runEnv, ...contextEnv })) ambient[key] = value;
 
-  const configPath = wdioConfigPath(opts.appConfig.deviceType, opts.configDir);
+  const configPath = wdioConfigPath(opts.target.deviceType, opts.configDir);
   const make = opts.makeLauncher ?? defaultLauncher;
   const launcher = await make(configPath, scopeToLauncherArgs(opts.scope));
   const exitCode = (await launcher.run()) ?? 0;

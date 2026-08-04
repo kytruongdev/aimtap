@@ -14,8 +14,7 @@ import {
   type EnvironmentReport,
 } from '../../device/index.js';
 import { launchRun, type RunOutcome, type RunScope } from '../../runner/index.js';
-import { buildReportModel } from '../../reporter/index.js';
-import { openDatabase, createRunRepository } from '../../store/index.js';
+import { generateReport } from '../../reporter/index.js';
 
 // TICKET-021 (ADR-018, sequence-diagrams §1): `aimtap run <app-id>`. The precondition chain runs in
 // the CLI process; any failing item stops the run before it opens — no record, no report — naming the
@@ -133,7 +132,7 @@ export async function executeRun(
 
   const outcome = await deps.launch({
     runId: prepared.runId,
-    appConfig: prepared.appConfig,
+    target: prepared.appConfig,
     deviceContext: prepared.deviceContext,
     scope,
     outputDir: deps.outputDir,
@@ -157,22 +156,15 @@ function realSteps(): RunSteps {
   };
 }
 
-async function generateReport(runId: string, appId: string, outputDir: string): Promise<void> {
-  const { render } = await import('../../reporter/render.js');
-  const db = openDatabase(appId, outputDir);
-  try {
-    const model = buildReportModel(runId, createRunRepository(db));
-    await render(model, 'pdf', { outputDir });
-  } finally {
-    db.close();
-  }
-}
-
 function withDefaults(deps?: Partial<RunDeps>): RunDeps {
   return {
     steps: deps?.steps ?? realSteps(),
     launch: deps?.launch ?? launchRun,
-    report: deps?.report ?? generateReport,
+    report:
+      deps?.report ??
+      (async (runId, appId, outputDir) => {
+        await generateReport(appId, runId, outputDir);
+      }),
     outputDir: deps?.outputDir ?? loadPlatformConfig().outputDir,
     print: deps?.print ?? ((line) => process.stdout.write(`${line}\n`)),
   };

@@ -36,6 +36,6 @@ export {
   wdioConfigPath,
   capabilityKindOf,
 } from './launch-run.js';
-export type { RunScope, RunOutcome, ScopeKind, LaunchRunOptions } from './launch-run.js';
+export type { RunScope, RunOutcome, ScopeKind, LaunchRunOptions, LaunchTarget } from './launch-run.js';
 
 export { default as ProgressReporter, ProgressTracker } from './progress-reporter.js';

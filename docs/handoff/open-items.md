@@ -8,6 +8,23 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
+### CẦN TEAM-LEAD LÀM: Cưỡng chế ranh giới module đang trơ + hai cạnh vi phạm ma trận (phát hiện lúc review US-4.3)
+**A — Boundary lint không thực sự chặn (tồn đọng, ưu tiên cao).** `eslint-plugin-boundaries` cần phân giải import ra file để phân loại element, nhưng dự án chỉ có `eslint-import-resolver-node` (không hiểu `.ts` / đuôi `.js` của NodeNext). Kiểm chứng: một import `cli → store` cố ý sai vẫn `eslint` exit 0, không lỗi. Nghĩa là ma trận ADR-002/ADR-014 trong `eslint.config.ts` hiện **không cưỡng chế gì** — đây là thứ khiến hai vi phạm dưới lọt qua. Sửa: thêm resolver TS (vd `eslint-import-resolver-typescript`) và cấu hình `settings['import/resolver']` để boundaries phân giải `.js`→`.ts`; chạy lại `make lint` phải bắt được vi phạm. Sau khi bật, gate mới bảo vệ được ma trận.
+
+**B — `cli → store` (vi phạm ma trận; `src/cli/commands/run.ts`).** `generateReport` tự `openDatabase`/`createRunRepository` trong tiến trình CLI. Ma trận không cho `cli → store` (component-design §CLI Entry không liệt kê Store). **Quyết định SA:** việc dàn dựng báo cáo (mở Store + `buildReportModel` + `render`) thuộc **module Reporter**, phơi một hàm `generateReport(appId, runId, outputDir, format)`; CLI gọi Reporter (`cli → reporter` đã cho phép), `reporter → store` đã cho phép. Dùng lại nguyên vẹn cho US-4.4 `aimtap report <run-id>`. Bỏ import store khỏi CLI.
+
+**C — `runner → registry` (vi phạm ma trận; `src/runner/launch-run.ts`).** `import type { AppConfig }` từ registry — type-only nên lọt cả khi resolver đã sửa (boundaries mặc định không kiểm type-import), nhưng vẫn là cạnh không có trong ma trận. **Quyết định SA:** `launchRun` nhận một interface cấu trúc khai báo trong `runner` (các trường cần: `appId`, `buildPath`, `deviceType`, `deviceId`) thay vì `AppConfig`, giống cách Device dùng `AppEnvironmentTarget` để không phụ thuộc Registry (`environment-check.ts`). CLI truyền `AppConfig` (tương thích cấu trúc). Giữ `runner` tách khỏi `registry`.
+
+Cả ba không cần ADR mới (không đổi quyết định nào; B/C đưa mã về đúng ma trận ADR-014, A khôi phục cưỡng chế của ADR-002/008). Sau khi Team Lead sửa: SA cập nhật `component-design.md` §Reporter (thêm entry dàn dựng báo cáo) và §Test Runner (`launchRun` nhận target cấu trúc), rồi verify lại US-4.3. Cân nhắc bật kiểm cả type-import ở `boundaries/dependency-nodes` để cạnh type như C không lọt về sau.
+
+**Team Lead xử lý (2026-08-04, branch `us/4-3-cli-run-progress`):**
+- **A —** thêm `eslint-import-resolver-typescript` + `settings['import/resolver'].typescript` trong `eslint.config.ts`. Kiểm chứng: trước đó `cli → store` cố ý vẫn `eslint` exit 0; sau khi thêm resolver, đúng 3 vi phạm bị bắt (B + C×2). Resolver bắt **cả type-import** (`import type { AppConfig }` của C bị flag), nên không cần bật thêm `dependency-nodes`. Hàng rào ADR-002/ADR-014 nay cưỡng chế thật (thử một import sai làm `make lint` đỏ, rồi revert).
+- **B —** dàn dựng báo cáo chuyển sang Reporter: `src/reporter/generate-report.ts` `generateReport(appId, runId, outputDir, format)`; `run.ts` gọi Reporter (`cli → reporter`), bỏ import store khỏi CLI. US-4.4 dùng lại nguyên vẹn.
+- **C —** `launch-run.ts` khai báo interface cấu trúc `LaunchTarget` (`appId`/`buildPath`/`deviceType`/`deviceId`); CLI truyền `AppConfig` (tương thích cấu trúc); bỏ import registry khỏi runner.
+- Gate: `make lint` cưỡng chế ma trận, 0 vi phạm; typecheck sạch; 171 test xanh; smoke `aimtap run` reject tiền điều kiện đúng. **Chờ SA cập nhật `component-design.md` + verify lại để đóng.**
+
+---
+
 ### CẦN TEAM-LEAD LÀM: Guard hiện diện `AIMTAP_*` đặt sai vòng đời — chạy sau khi phiên đã mở (phát hiện lúc review US-3.4)
 Bối cảnh: mở từ review US-3.3 (guard cần chạy **trước khi mở phiên Appium** để thiếu biến `AIMTAP_*` báo lỗi đọc được thay vì lỗi Appium khó hiểu — ADR-009 §Hệ quả). US-3.4 (`985f56c`) đã thêm logic guard đúng và có test: `missingCapabilityEnv`/`assertCapabilityEnv` trong `src/runner/cucumber-hooks.ts` kiểm đúng khóa bắt buộc theo `CapabilityKind`, coi rỗng là thiếu, ném `PlatformFailure` liệt kê khóa thiếu.
 
