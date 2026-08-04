@@ -16,4 +16,4 @@ export type { ImageResolver, ReportFormat } from './report-html.js';
 
 export { render } from './render.js';
 
-export { generateReport } from './generate-report.js';
+export { generateReport, generateReportForRun, findAppForRun } from './generate-report.js';
