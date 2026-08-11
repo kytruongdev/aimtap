@@ -3,7 +3,9 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { migration001 } from './migrations/001-initial.js';
 
-// Per-app SQLite results database (ADR-003): output/<app-id>/results.db, WAL mode, append-only.
+// Single SQLite results database for every app: data/database.db, WAL mode, append-only. Every row
+// carries its own app_id, so one shared store holds all apps' run history. It lives under data/
+// (durable), separate from output/ (disposable reports/screenshots), and is never deleted by tooling.
 // Migrations run in order at startup, tracked in schema_migrations; a released migration is never edited.
 
 export type Db = Database.Database;
@@ -15,8 +17,8 @@ export interface Migration {
 
 const migrations: Migration[] = [migration001];
 
-function defaultOutputDir(): string {
-  return path.join(process.cwd(), 'output');
+function defaultDataDir(): string {
+  return path.join(process.cwd(), 'data');
 }
 
 /** Apply every pending migration in version order, inside a single transaction. Idempotent. */
@@ -47,12 +49,11 @@ export function applyMigrations(db: Db): void {
   apply();
 }
 
-/** Open (creating the file and folder if needed) the results database of one app, migrated and ready. */
-export function openDatabase(appId: string, outputDir: string = defaultOutputDir()): Db {
-  const appDir = path.join(outputDir, appId);
-  fs.mkdirSync(appDir, { recursive: true });
+/** Open (creating the file and folder if needed) the shared results database, migrated and ready. */
+export function openDatabase(dataDir: string = defaultDataDir()): Db {
+  fs.mkdirSync(dataDir, { recursive: true });
 
-  const db = new Database(path.join(appDir, 'results.db'));
+  const db = new Database(path.join(dataDir, 'database.db'));
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   applyMigrations(db);

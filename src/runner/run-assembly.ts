@@ -44,7 +44,7 @@ export function assembleWorkerRun(env: NodeJS.ProcessEnv = process.env): WorkerR
     criteria: env.AIMTAP_SCOPE_CRITERIA ?? null,
   };
 
-  const db = openDatabase(appId, outputDir);
+  const db = openDatabase();
   const repository = createRunRepository(db);
 
   const evidence = createEvidenceCollector({

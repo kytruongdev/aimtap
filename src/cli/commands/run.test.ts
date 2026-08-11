@@ -111,12 +111,53 @@ describe('executeRun', () => {
         steps: steps(),
         launch: vi.fn().mockResolvedValue({ runId: 'run-1', exitCode: 0 } satisfies RunOutcome),
         report: vi.fn().mockResolvedValue(undefined),
+        summarize: vi.fn().mockReturnValue({
+          app_id: 'demo',
+          run_id: 'run-1',
+          features: [],
+          total: 0,
+          passed: 0,
+          failed: 0,
+          passed_healed: 0,
+        }),
         outputDir: '/out',
         print: (line) => lines.push(line),
         ...overrides,
       },
     };
   }
+
+  it('prints a per-feature pass/fail summary after the run', async () => {
+    const summarize = vi.fn().mockReturnValue({
+      app_id: 'demo',
+      run_id: 'run-1',
+      features: [
+        {
+          test_feature: 'Cart',
+          test_cases: [
+            { test_case: 'Add a product to the cart', status: 'passed' },
+            { test_case: 'Cart count wrongly two', status: 'failed' },
+          ],
+          passed: 1,
+          failed: 1,
+          passed_healed: 0,
+        },
+      ],
+      total: 2,
+      passed: 1,
+      failed: 1,
+      passed_healed: 0,
+    });
+    const { deps: d, lines } = deps({ summarize });
+
+    await executeRun('demo', {}, d);
+
+    const out = lines.join('\n');
+    expect(summarize).toHaveBeenCalledOnce();
+    expect(out).toContain('Feature: Cart');
+    expect(out).toContain('Add a product to the cart');
+    expect(out).toContain('1 passed, 1 failed');
+  });
 
   it('does not launch or report when a precondition fails, and exits non-zero', async () => {
     const launch = vi.fn();

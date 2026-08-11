@@ -7,7 +7,7 @@ function deps(overrides: Partial<ReportDeps> = {}): { deps: ReportDeps; lines: s
   return {
     lines,
     deps: {
-      generate: vi.fn().mockResolvedValue('/out/demo/reports/run-1.pdf'),
+      generate: vi.fn().mockResolvedValue('/out/demo/reports/run-1.html'),
       outputDir: '/out',
       print: (line) => lines.push(line),
       ...overrides,
@@ -16,35 +16,24 @@ function deps(overrides: Partial<ReportDeps> = {}): { deps: ReportDeps; lines: s
 }
 
 describe('executeReport', () => {
-  it('renders the report and prints its path', async () => {
-    const generate = vi.fn().mockResolvedValue('/out/demo/reports/run-1.pdf');
+  it('writes the report and prints its path', async () => {
+    const generate = vi.fn().mockResolvedValue('/out/demo/reports/run-1.html');
     const { deps: d, lines } = deps({ generate });
 
-    const code = await executeReport('run-1', 'pdf', d);
+    const code = await executeReport('run-1', d);
 
     expect(code).toBe(0);
-    expect(generate).toHaveBeenCalledWith('run-1', '/out', 'pdf');
-    expect(lines.join('\n')).toContain('/out/demo/reports/run-1.pdf');
+    expect(generate).toHaveBeenCalledWith('run-1', '/out');
+    expect(lines.join('\n')).toContain('/out/demo/reports/run-1.html');
   });
 
   it('reports a clear error and creates nothing when the run does not exist', async () => {
     const generate = vi.fn().mockRejectedValue(new PlatformFailure('Run run-x was not found in /out'));
     const { deps: d, lines } = deps({ generate });
 
-    const code = await executeReport('run-x', 'pdf', d);
+    const code = await executeReport('run-x', d);
 
     expect(code).toBe(1);
     expect(lines.join('\n')).toContain('was not found');
-  });
-
-  it('rejects an unknown format without calling the renderer', async () => {
-    const generate = vi.fn();
-    const { deps: d, lines } = deps({ generate });
-
-    const code = await executeReport('run-1', 'svg', d);
-
-    expect(code).toBe(1);
-    expect(generate).not.toHaveBeenCalled();
-    expect(lines.join('\n')).toContain('Unknown format');
   });
 });
