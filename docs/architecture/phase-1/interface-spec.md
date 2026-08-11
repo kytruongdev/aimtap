@@ -49,7 +49,7 @@ Lỗi chụp ảnh/ghi nhật ký được bắt tại đây, đánh dấu `evid
 **Liên quan:** FR-EXEC-03→06, FR-EXEC-10, UC-07.
 
 ### Result Store (repository)
-**Mục đích:** ghi/đọc dữ liệu kết quả; bản ghi kết quả bất biến.
+**Mục đích:** ghi/đọc dữ liệu kết quả; bản ghi kết quả bất biến. Một store SQLite chung `data/database.db` cho mọi ứng dụng, mỗi hàng mang `app_id`; mở qua `openDatabase(dataDir)` (ADR-020).
 **Đầu vào / đầu ra:**
 - `saveRunStart(run): void` — chèn hàng Run lúc mở với `completion = incomplete`, để khóa ngoại của TestCaseResult phân giải được trong lúc lượt chạy diễn ra.
 - `finalizeRun(summary): void` — hoàn tất **một lần** hàng tổng hợp của chính lượt chạy đó: thời điểm kết thúc, tổng thời lượng, `completion`, `aggregate_result`, `not_run_count`, `stop_reason`.
@@ -61,9 +61,9 @@ Bản ghi kết quả (TestCaseResult, StepLog) chỉ chèn thêm; một lượt
 ### Reporter
 **Mục đích:** dựng và xuất báo cáo một tệp.
 **Đầu vào / đầu ra:**
-- `buildReportModel(runId): ReportModel` rồi `render(model, format: 'pdf' | 'png'): Promise<string>` (đường dẫn tệp dưới `output/<app-id>/reports/<run-id>.<ext>`); render bằng trình duyệt không giao diện nên bất đồng bộ (ADR-012).
-- `generateReport(appId, runId, outputDir, format): Promise<string>` — điểm vào dàn dựng (mở Store + dựng mô hình + render); CLI cuối lượt chạy gọi (US-4.3).
-- `generateReportForRun(runId, outputDir, format): Promise<string>` — phân giải ứng dụng giữ lượt chạy (Store theo từng ứng dụng) rồi render; `aimtap report <run-id>` gọi (US-4.4); `run-id` không tồn tại ⇒ `PlatformFailure`, không tạo tệp. Việc mở Store nằm trong Reporter (`cli → reporter → store`, ADR-014).
+- `buildReportModel(runId): ReportModel` rồi `render(model): string` — ghi một tệp HTML tự chứa (ảnh nhúng data URI) tại `output/<app-id>/reports/<run-id>.html`; đồng bộ, không trình duyệt không giao diện (ADR-019).
+- `generateReport(runId, outputDir, dataDir?): Promise<string>` — điểm vào dàn dựng: mở store chung, dựng mô hình, render; trả đường dẫn tệp. CLI cuối lượt chạy (US-4.3) và `aimtap report <run-id>` (US-4.4) gọi; `run-id` không tồn tại ⇒ `PlatformFailure` (không tạo tệp). Việc mở store nằm trong Reporter (`cli → reporter → store`, ADR-014).
+- `summarizeRun(runId, dataDir?): RunSummary` — tóm tắt pass/fail nhóm theo test feature đọc từ store; CLI in sau mỗi lượt chạy.
 **Liên quan:** FR-REP-01→04, ADR-006, ADR-012.
 
 ---
@@ -80,7 +80,7 @@ Bản ghi kết quả (TestCaseResult, StepLog) chỉ chèn thêm; một lượt
 Capabilities khai báo ở `config/wdio.ios.{sim,device}.conf.ts`; phiên mở một lần cho mỗi lượt chạy, dùng lại giữa các test case (`north-star.md` §2.2). Dùng lệnh cấp cao của WebdriverIO, không gọi giao thức cấp thấp.
 
 ### Jira
-Không có tích hợp API; đầu ra là một tệp PNG/PDF QC đính thủ công (BC-05, FR-REP-03).
+Không có tích hợp API; đầu ra là một tệp HTML tự chứa QC đính thủ công (BC-05, FR-REP-03; ADR-019).
 
 ---
 
