@@ -14,6 +14,7 @@ Quy ước áp dụng cho toàn bộ kho mã: nền tảng, Page Object, phần 
 ### Tổ chức thư mục và ranh giới
 - Mỗi module của nền tảng là một thư mục con của `src/`, đặt tên theo module ở `north-star.md` §2. Một module mới là một quyết định chạm khuôn khổ kiến trúc. — *thêm bởi: SA*
 - Mỗi thư mục `apps/<app-id>/` giữ đúng cấu trúc cố định: `app.config.ts`, `features/`, `steps/`, `screens/`, `fixtures/`, `test-data.example.json`, và `test-data.local.json` (không theo dõi bởi Git). — *thêm bởi: SA*
+- File build của ứng dụng (`.app` cho simulator, `.ipa` cho thiết bị thật) là **artifact nhị phân cục bộ theo máy** — như `test-data.local.json`, **không đưa lên Git**. Đặt ở `apps/<app-id>/build/` (khuyến nghị, gọn theo từng app) hoặc một đường dẫn ngoài repo; `app.config.ts.buildPath` trỏ tới file đó. QC tải/giải nén file build về vị trí này; mã nguồn của ứng dụng-được-test không nằm trong repo nền tảng — chỉ cần bản build. — *thêm bởi: SA*
 - Mã trong `src/` không import bất kỳ thứ gì từ `apps/`. — *thêm bởi: SA*
 - Mã trong `apps/` chỉ import từ `src/index.ts`, không import vào thư mục con nội bộ của một module. — *thêm bởi: SA*
 - Một module trong `src/` chỉ import module khác qua `index.ts` của module đó, không import thẳng vào tệp bên trong. Phụ thuộc đi theo đúng cột "Phụ thuộc" ở `north-star.md` §2; không có phụ thuộc vòng. — *thêm bởi: SA*
