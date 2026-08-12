@@ -118,8 +118,7 @@ describe('buildReportHtml', () => {
 
 describe('reportFilePath', () => {
   it('places the report at output/<app-id>/reports/<run-id>.<ext>', () => {
-    expect(reportFilePath(model(), 'pdf', '/out')).toBe('/out/demo/reports/run-1.pdf');
-    expect(reportFilePath(model(), 'png', '/out')).toBe('/out/demo/reports/run-1.png');
+    expect(reportFilePath(model(), '/out')).toBe('/out/demo/reports/run-1.html');
   });
 });
 

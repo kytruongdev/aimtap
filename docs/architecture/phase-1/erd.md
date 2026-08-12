@@ -1,6 +1,6 @@
 # ERD — Phase 1
 
-Mô hình dữ liệu kết quả của Phase 1. Nơi lưu và thư viện truy cập theo ADR-003: SQLite cục bộ qua `better-sqlite3`, mỗi ứng dụng một tệp tại `output/<app-id>/results.db`. Chỉ ghi thêm, không ghi đè (BR-009, FR-DATA-05).
+Mô hình dữ liệu kết quả của Phase 1. Nơi lưu và thư viện truy cập theo ADR-003/ADR-020: SQLite cục bộ qua `better-sqlite3`, một cơ sở dữ liệu chung tại `data/database.db`, mỗi hàng mang `app_id`. Chỉ ghi thêm, không ghi đè (BR-009, FR-DATA-05).
 
 Ba thực thể: **Run** (một lượt chạy), **TestCaseResult** (kết quả một test case trong một lượt chạy), **StepLog** (một bước trong nhật ký thực thi). Ảnh chụp màn hình là tệp trên đĩa, không phải thực thể; bản ghi chỉ giữ đường dẫn tương đối (ADR-003, ADR-006).
 

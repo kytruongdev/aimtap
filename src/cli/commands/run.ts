@@ -14,7 +14,7 @@ import {
   type EnvironmentReport,
 } from '../../device/index.js';
 import { launchRun, type RunOutcome, type RunScope } from '../../runner/index.js';
-import { generateReport } from '../../reporter/index.js';
+import { generateReport, summarizeRun, formatRunSummary, type RunSummary } from '../../reporter/index.js';
 
 // TICKET-021 (ADR-018, sequence-diagrams §1): `aimtap run <app-id>`. The precondition chain runs in
 // the CLI process; any failing item stops the run before it opens — no record, no report — naming the
@@ -110,6 +110,7 @@ export interface RunDeps {
   steps: RunSteps;
   launch: (opts: Parameters<typeof launchRun>[0]) => Promise<RunOutcome>;
   report: (runId: string, appId: string, outputDir: string) => Promise<void>;
+  summarize: (runId: string, appId: string, outputDir: string) => RunSummary;
   outputDir: string;
   print: (line: string) => void;
 }
@@ -140,7 +141,17 @@ export async function executeRun(
 
   // Regenerate the report from the stored data, whether the run completed or stopped early (ADR-006).
   await deps.report(prepared.runId, appId, deps.outputDir);
-  deps.print(`Report: ${deps.outputDir}/${appId}/reports/${prepared.runId}.pdf`);
+  deps.print(`Report: ${deps.outputDir}/${appId}/reports/${prepared.runId}.html`);
+
+  // Per-feature pass/fail summary from stored results; a convenience that never changes the outcome.
+  try {
+    for (const line of formatRunSummary(deps.summarize(prepared.runId, appId, deps.outputDir))) {
+      deps.print(line);
+    }
+  } catch {
+    // ignore: the report and exit code are the source of truth
+  }
+
   return outcome.exitCode;
 }
 
@@ -162,9 +173,10 @@ function withDefaults(deps?: Partial<RunDeps>): RunDeps {
     launch: deps?.launch ?? launchRun,
     report:
       deps?.report ??
-      (async (runId, appId, outputDir) => {
-        await generateReport(appId, runId, outputDir);
+      (async (runId, _appId, outputDir) => {
+        await generateReport(runId, outputDir);
       }),
+    summarize: deps?.summarize ?? ((runId) => summarizeRun(runId)),
     outputDir: deps?.outputDir ?? loadPlatformConfig().outputDir,
     print: deps?.print ?? ((line) => process.stdout.write(`${line}\n`)),
   };

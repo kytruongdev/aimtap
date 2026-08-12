@@ -7,7 +7,7 @@ export {
 } from './errors.js';
 export type { AppFailureKind, FailureContext } from './errors.js';
 
-export { assertExpectation } from './assertion.js';
+export { assertExpectation, ASSERTION_SENTINEL } from './assertion.js';
 
 export { logger, loggerForRun, registerSecretPaths, redactObject } from './logger.js';
 

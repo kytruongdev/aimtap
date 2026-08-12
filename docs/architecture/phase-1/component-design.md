@@ -76,9 +76,9 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 **Requirement liên quan:** FR-EXEC-03→06, FR-EXEC-10, BR-003, BR-004, BR-014, UC-07.
 
 ## Result Store
-**Trách nhiệm:** Lưu bản ghi kết quả có cấu trúc trên máy QC (ADR-003).
+**Trách nhiệm:** Lưu bản ghi kết quả có cấu trúc trên máy QC (ADR-003, ADR-020).
 **Cấu trúc bên trong:**
-- `database.ts` — mở SQLite tại `output/<app-id>/results.db`, bật WAL, chuẩn bị câu lệnh.
+- `database.ts` — mở SQLite tại `data/database.db` (một store chung cho mọi ứng dụng, mỗi hàng mang `app_id`; ADR-020), bật WAL, chuẩn bị câu lệnh.
 - `migrations/` — nâng cấp schema có đánh số, chạy lúc khởi động.
 - `run-repository.ts` — ghi/đọc Run, TestCaseResult, StepLog theo giao dịch; chỉ chèn thêm.
 - `models.ts` — kiểu bản ghi kết quả, khớp `erd.md`.
@@ -90,7 +90,7 @@ Phân vai ở bước tiền điều kiện lượt chạy để không kiểm t
 **Cấu trúc bên trong:**
 - `report-model.ts` — dựng mô hình báo cáo từ Result Store: bối cảnh lượt chạy, bảng tóm tắt nhóm theo test feature, chi tiết mỗi test case hỏng.
 - `report-html.ts` — dựng tài liệu HTML một tệp từ mô hình; escape mọi giá trị nội suy.
-- `render.ts` — xuất HTML thành một tệp PNG/PDF bằng trình duyệt không giao diện (ADR-012).
+- `render.ts` — ghi tài liệu HTML tự chứa (ảnh nhúng data URI) thành một tệp `.html` (ADR-019); đồng bộ, không dùng trình duyệt không giao diện.
 - `generate-report.ts` — điểm vào dàn dựng báo cáo: mở Result Store, dựng mô hình, render thành tệp. CLI (`aimtap run` cuối lượt) và `aimtap report <run-id>` (US-4.4) gọi hàm này; việc mở Store nằm trong Reporter (`reporter → store`), không phải trong CLI.
 **Phụ thuộc:** Result Store, công cụ PDF (ADR-012), Shared.
 **Requirement liên quan:** FR-REP-01→04, BR-012, UC-08, UC-09.

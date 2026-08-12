@@ -2,10 +2,11 @@ import nodeFs from 'node:fs';
 import nodePath from 'node:path';
 import type { ReportModel, ReportFailure, ReportStep } from './report-model.js';
 
-// TICKET-025: build the one-file HTML document from the report model (ADR-006). Pure and testable -
-// the headless-browser render (render.ts) turns this HTML into a PNG/PDF. The template is controlled
-// by the platform so it can carry the project-specific content: the summary grouped by test feature,
-// and for each failed test case the failing-step screenshot, execution log, screen, failure type and
+// TICKET-025: build the one-file HTML document from the report model (ADR-006). Pure and testable;
+// render.ts writes this HTML straight to a single self-contained .html file (screenshots embedded as
+// data URIs, so there is no separate image file and no browser render). The template is controlled by
+// the platform so it can carry the project-specific content: the summary grouped by test feature, and
+// for each failed test case the failing-step screenshot, execution log, screen, failure type and
 // original error message. Missing evidence is shown as missing, never left blank (BR-004).
 
 /** Resolves a stored screenshot path to an <img> src (a data URI in a real render), or null. */
@@ -129,13 +130,11 @@ ${failuresSection(model, resolveImage)}
 </html>`;
 }
 
-// --- Pure render helpers (path + image embedding); the browser part lives in render.ts ---------
+// --- Pure helpers (output path + image embedding) --------------------------------------------------
 
-export type ReportFormat = 'pdf' | 'png';
-
-/** Absolute output path for a run's report: output/<app-id>/reports/<run-id>.<ext>. */
-export function reportFilePath(model: ReportModel, format: ReportFormat, outputDir: string): string {
-  return nodePath.join(outputDir, model.context.app_id, 'reports', `${model.run_id}.${format}`);
+/** Absolute output path for a run's report: output/<app-id>/reports/<run-id>.html. */
+export function reportFilePath(model: ReportModel, outputDir: string): string {
+  return nodePath.join(outputDir, model.context.app_id, 'reports', `${model.run_id}.html`);
 }
 
 /** Read each screenshot file into a data URI so the output stays a single self-contained file. */

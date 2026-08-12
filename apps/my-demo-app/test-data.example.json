@@ -1,0 +1,9 @@
+{
+  "secrets": {
+    "standardUser": {
+      "username": "<a valid demo user, e.g. visual@example.com>",
+      "password": "<its password, e.g. 10203040>"
+    }
+  },
+  "env": {}
+}

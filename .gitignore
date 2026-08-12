@@ -17,6 +17,11 @@ coverage/
 # Runtime output — not shared between QC machines (AS-04)
 output/
 
+# Result store — durable run history, local per machine, never committed
+data/
+
 # Secrets — never commit real values
 .env.local
 apps/*/test-data.local.json
+# App build artifacts — per-machine binary, not in Git (coding-convention §17)
+apps/*/build/

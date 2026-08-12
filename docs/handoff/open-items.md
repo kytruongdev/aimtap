@@ -8,11 +8,37 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
-Không có mục đang mở.
+### CẦN BA + TEAM-LEAD LÀM: Khởi động US-5.2 — chốt app thí điểm (AUT) và chuỗi requirement → `.feature` → chạy thật
+Bối cảnh: Phase 1 ~94% (16/17 US), chỉ còn US-5.2 (TICKET-026) — lần chứng minh nền tảng chạy đầu-cuối thật trên simulator, và là **thước đo** cho phần AI Phase 2 (kịch bản người viết chạy được là chuẩn để so kịch bản AI sinh). Không có app thật/requirement/QC nội bộ nên dùng app demo nguồn mở làm AUT và tự dựng đầu vào nghiệp vụ.
 
----
+**AUT đã research (SA):** [saucelabs/my-demo-app-ios](https://github.com/saucelabs/my-demo-app-ios) (active) — có build simulator tải sẵn `SauceLabs-Demo-App.Simulator.zip` (release 2.2.2): giải nén → `.app` → `app.config.ts.buildPath`, `deviceType: 'simulator'`. (Bản `my-demo-app-rn` cũ đã archived 05/2024, không dùng.)
+
+**Ghi chú vai:** hiện tại **Team Lead, Dev, QC là một người** — các mục dưới tách theo "mũ" (vai) để rõ *loại việc*, nhưng cùng một người thực hiện; thứ tự trong mũ đó vẫn nên theo. **BA** và **SA** là hai vai tách riêng.
+
+**Chuỗi vai để khởi động (đúng quy trình):**
+
+**Bước 0 — người Team Lead/Dev/QC:** tải `SauceLabs-Demo-App.Simulator.zip`, giải nén `.app` vào `apps/<pilot>/build/` (`coding-convention.md` §Tổ chức thư mục), mở trong simulator một lần **xác nhận có luồng login + credentials** (SA chưa verify được từ README — README chỉ mô tả QR scanner). Báo lại cho BA những luồng quan sát được.
+
+**BA** — *đầu vào nghiệp vụ* — **đã giao:** `docs/business/phase-1/pilot-app-requirements.md`.
+- Requirement/AC cho AUT: ba luồng cốt lõi (đăng nhập đúng, đăng nhập sai, thêm sản phẩm vào giỏ) phát biểu mức nghiệp vụ (bối cảnh — hành động — kết quả mong đợi), dữ liệu tham chiếu bằng tên theo BR-017.
+- Năm test case, hai test feature: TC-1.1/TC-1.2/TC-2.1 đạt; **TC-2.2 gieo lỗi có chủ đích (`@seeded-fail`)** để kích hoạt đường ảnh chụp + báo cáo test hỏng. Kèm phương án thay thế nếu build có tài khoản khóa.
+- Các chi tiết đặc thù build (giá trị credential, có tài khoản khóa không, nhãn màn hình) đánh nhãn giả định/câu hỏi mở ở §6 — người mở simulator / vai viết `.feature` xác nhận, không cần BA quyết. BA không giữ mục mở nào ở US-5.2.
+
+**Team Lead/Dev/QC (US-5.2, một người — tách theo mũ):**
+- *(mũ QC)* Từ AC của BA, viết `features/*.feature`: hành vi bằng **tiếng Anh, không locator, mỗi test case một hành vi + một kết quả** (BR-016); bước mở đầu tự đưa app/dữ liệu về trạng thái cần (BR-005). Dùng **Appium Inspector** trên chính build đó để đọc accessibility id.
+- *(mũ Dev)* Viết `steps/*.steps.ts` (mỗi câu ánh xạ một phương thức Page Object, ưu tiên tái dùng câu đã có, không chứa locator) và `screens/*.screen.ts` (Page Object: locator tập trung, thao tác mức nghiệp vụ, tìm phần tử qua Locator Resolver, **không assertion trong Page Object**).
+- *(mũ Team Lead)* Dựng `apps/<pilot>/` đúng cấu trúc: `app.config.ts` (hợp schema, `buildPath` trỏ `build/`), `test-data.example.json` + giá trị thật ở `.local`; đảm bảo cổng `make typecheck/lint/test` xanh; mở PR (một US = một PR). Bám `coding-convention.md` (§mô tả hành vi/§cài đặt/§Page Object/§đặt tên) và `north-star.md` §2.1.
+
+**SA** — *kiểm soát chất lượng kiến trúc*:
+- Review nội dung `apps/<pilot>/` đối chiếu convention (tách Page Object, `.feature` không locator, `screenName` khớp Page Object — ADR-011, phụ thuộc một chiều features→steps→screens).
+- **Verify lần chạy thật đầu-cuối** trên simulator; soi các mối nối rủi ro lần đầu: cast `browser` ở `run-assembly`, adapter payload Cucumber, env kế thừa xuống worker, SQLite trong worker, và bundleId vs `app.config` (xem ghi chú review US-4.3).
+
+**Nghiệm thu US-5.2:** một case đạt + một case hỏng chạy được trên simulator, sinh báo cáo mở xem được; lượt chạy này chốt làm **baseline known-good** để sau này đo hiệu quả AI. Chốt AUT cụ thể là quyết định kỹ thuật của đội.
 
 ## Đã xử lý
+
+### CẦN SA LÀM RÕ: Phân loại lỗi ADR-016 bị vô hiệu dưới @wdio/cucumber-framework — *đã xử lý*
+Chẩn đoán xác nhận trong source: `@wdio/cucumber-framework` (index.js:128) truyền `afterStep` **chuỗi** `world.result.message`, không phải object → `AppFailure.kind` (ADR-016) không sống sót, mọi assertion rơi `step_not_executed`. **Chốt (SA):** mang `kind='assertion'` qua ranh giới Cucumber bằng một **sentinel ổn định trong message** — `assertExpectation` (`shared/assertion.ts`) gắn sentinel; `failure-classifier` nhận diện → `wrong_conclusion` và cắt sentinel để `error_message` giữ nguyên (FR-EXEC-10). Ghi vào ADR-016 §Hệ quả. **Việc Dev (2 file):** (1) `shared/assertion.ts` gắn tiền tố sentinel; (2) `evidence/failure-classifier.ts` nhận diện + cắt sentinel (giữ nhánh `isAppFailure && kind==='assertion'` cho đường trong tiến trình). Không chặn nghiệm thu US-5.2.
 
 ### CẦN TEAM-LEAD LÀM: Cưỡng chế ranh giới module + hai cạnh vi phạm ma trận (US-4.3) — *đã xử lý*
 Sửa ở `fe1d1ed`, **SA verified thực nghiệm**: (A) `eslint-import-resolver-typescript` + `settings['import/resolver']` — probe `cli→store` cố ý sai nay báo lỗi `boundaries/element-types`; ma trận ADR-002/014 cưỡng chế thật (bắt cả type-import). (B) `src/reporter/generate-report.ts` `generateReport(appId,runId,outputDir,format)`; CLI gọi Reporter, bỏ import store. (C) `launchRun` nhận `LaunchTarget` cấu trúc trong runner, không import `AppConfig` từ registry. Mã thật pass lint với hàng rào sống; tsc 0; 171/171 test. `component-design.md` §Reporter/§Test Runner cập nhật.

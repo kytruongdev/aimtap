@@ -49,7 +49,7 @@ flowchart TB
     runner --> evidence
     evidence --> store
     evidence --> reporter
-    reporter -->|PNG/PDF| qc
+    reporter -->|HTML| qc
     qc -->|đính thủ công| jira
     cfg --> claude
     resolver -.self-healing, Phase 2.-> claude
@@ -75,7 +75,7 @@ Diagram này được cập nhật mỗi khi một quyết định kiến trúc 
 | Locator Resolver | Điểm duy nhất mà mọi Page Object đi qua để tìm một phần tử trên màn hình. | đọc locator từ Page Object | WebdriverIO (phiên toàn cục), Shared | 1 |
 | Evidence Collector | Dựng bằng chứng thực thi của mỗi test case: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng. | ghi tệp ảnh, đẩy bản ghi sang Result Store | Result Store, Shared | 1 |
 | Result Store | Lưu bản ghi kết quả có cấu trúc của mỗi lượt chạy và mỗi test case trên máy QC. | ghi/đọc SQLite cục bộ | better-sqlite3, Shared | 1 |
-| Reporter | Sinh báo cáo của một lượt chạy ở định dạng đính được vào Jira. | đọc Result Store và tệp ảnh | Result Store, công cụ PDF (Puppeteer), Shared | 1 |
+| Reporter | Sinh báo cáo của một lượt chạy dạng một tệp HTML tự chứa (đính thủ công). | đọc Result Store và tệp ảnh | Result Store, Shared | 1 |
 | Config & Secrets | Cung cấp cấu hình vận hành của nền tảng, nạp khóa API và dữ liệu kiểm thử từ nguồn ngoài kho mã. | đọc biến môi trường, tệp cấu hình cục bộ | Shared | 1 |
 | Shared | Cung cấp hạ tầng dùng chung cho mọi module: ghi log có cấu trúc, phân cấp lớp lỗi, tham số thời gian chờ, kiểu dữ liệu chung. | — | — | 1 |
 | Claude Client | Điểm duy nhất của nền tảng gọi Claude API: quản lý khóa, chọn mô hình, giới hạn số lần gọi, và tắt hoàn toàn bằng cấu hình. | đọc Config & Secrets | Config & Secrets, Shared | 2 |
@@ -148,7 +148,7 @@ aimtap/
 │   ├── reporter/                         # Reporter
 │   │   ├── report-model.ts               # dựng mô hình báo cáo từ Result Store
 │   │   ├── report-html.ts                # dựng tài liệu HTML một tệp từ mô hình
-│   │   ├── render.ts                     # xuất HTML thành một tệp PNG/PDF (ADR-012)
+│   │   ├── render.ts                     # ghi HTML tự chứa thành một tệp .html (ADR-019)
 │   │   ├── generate-report.ts            # điểm vào: mở Store + dựng mô hình + render (CLI & `report` gọi)
 │   │   └── index.ts
 │   │
@@ -183,6 +183,8 @@ aimtap/
 ├── apps/                                 # NỘI DUNG ỨNG DỤNG — ngoài ranh giới nền tảng
 │   └── <app-id>/
 │       ├── app.config.ts                 # định danh, đường dẫn build, thiết bị và phiên bản OS đích
+│       ├── build/                        # file build .app (sim) / .ipa (thiết bị) — nhị phân cục bộ theo máy, không commit; buildPath trỏ vào đây
+│       │   └── <app>.app
 │       ├── features/
 │       │   └── login.feature             # mô tả hành vi — một test feature, thứ QC và Reviewer đọc
 │       ├── steps/
@@ -199,11 +201,12 @@ aimtap/
 │   ├── wdio.ios.sim.conf.ts              # capabilities cho simulator
 │   └── wdio.ios.device.conf.ts           # capabilities cho thiết bị thật
 │
-├── output/                               # sinh ra lúc chạy — không theo dõi bởi Git
+├── data/                                 # dữ liệu kết quả bền — một store chung mọi app (ADR-020), không theo dõi bởi Git
+│   └── database.db
+├── output/                               # sinh ra lúc chạy, bỏ được — không theo dõi bởi Git
 │   └── <app-id>/
-│       ├── results.db
 │       ├── screenshots/<run-id>/
-│       └── reports/<run-id>.<png|pdf>
+│       └── reports/<run-id>.html
 │
 ├── docs/
 ├── Makefile                              # lệnh vận hành chuẩn: setup, doctor, run, report, test, lint, typecheck
@@ -228,7 +231,7 @@ Ba quy tắc cưỡng chế ranh giới, kiểm tra tự động bằng `eslint-
 
 Trong `apps/<app-id>/`, luồng phụ thuộc đi một chiều: `features/` → `steps/` → `screens/`. Tệp `.feature` không chứa mã; `screens/` không tham chiếu ngược lên `steps/`.
 
-Thêm một ứng dụng vào nền tảng là thêm một thư mục dưới `apps/`, không sửa gì trong `src/` (NFR-07, EP-24, EP-25). Mỗi ứng dụng có thư mục dữ liệu kết quả riêng dưới `output/` (EP-25), và một tệp `test-data.local.json` riêng chứa giá trị dữ liệu kiểm thử, không theo dõi bởi Git (ADR-009).
+Thêm một ứng dụng vào nền tảng là thêm một thư mục dưới `apps/`, không sửa gì trong `src/` (NFR-07, EP-24, EP-25). Dữ liệu kết quả của mọi ứng dụng nằm trong một store chung `data/database.db` phân biệt theo `app_id` (ADR-020); `output/<app-id>/` giữ báo cáo và ảnh chụp. Mỗi ứng dụng có một tệp `test-data.local.json` riêng chứa giá trị dữ liệu kiểm thử, không theo dõi bởi Git (ADR-009). Cô lập nội dung theo ứng dụng (EP-25) giữ ở tầng thư mục `apps/` và cột `app_id`.
 
 ### 2.2. Nguyên tắc thiết kế bên trong module
 
@@ -291,16 +294,16 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 |---|---|
 | Tech stack trụ cột: TypeScript trên Node.js, WebdriverIO với Cucumber, Appium với XCUITest driver. | [ADR-001](adr/adr-001.md) |
 | Tổ chức kho mã: nền tảng và nội dung của từng ứng dụng tách bằng ranh giới thư mục và quy tắc phụ thuộc một chiều. | [ADR-002](adr/adr-002.md) |
-| Lưu trữ dữ liệu kết quả trên máy QC. | [ADR-003](adr/adr-003.md) |
+| Lưu trữ dữ liệu kết quả trên máy QC (một store chung `data/database.db`). | [ADR-003](adr/adr-003.md) → [ADR-020](adr/adr-020.md) |
 | Điểm đặt lớp self-healing. | [ADR-004](adr/adr-004.md) |
 | Cách tích hợp Claude API qua một client dùng chung. | [ADR-005](adr/adr-005.md) |
-| Cách sinh báo cáo PNG/PDF. | [ADR-006](adr/adr-006.md) |
+| Cách sinh báo cáo (nền tảng tự sinh một tệp từ dữ liệu đã lưu). | [ADR-006](adr/adr-006.md) |
 | Cấu trúc test case và nguồn của biểu diễn bằng ngôn ngữ tự nhiên. | [ADR-007](adr/adr-007.md) |
 | Thư viện nền, công cụ chạy, và cách đồng bộ môi trường máy QC. | [ADR-008](adr/adr-008.md) |
 | Lưu dữ liệu kiểm thử và bí mật ngoài kho mã theo từng ứng dụng. | [ADR-009](adr/adr-009.md) |
 | Kiểm tra thiết bị sẵn sàng giữa lượt chạy. | [ADR-010](adr/adr-010.md) |
 | Nguồn của trường tên màn hình: Page Object đang thao tác. | [ADR-011](adr/adr-011.md) |
-| Công cụ sinh báo cáo PNG/PDF không giao diện. | [ADR-012](adr/adr-012.md) |
+| Định dạng và cách xuất báo cáo (HTML tự chứa, không trình duyệt không giao diện). | [ADR-012](adr/adr-012.md) → [ADR-019](adr/adr-019.md) |
 | Mô hình thực thi Test Runner trên WebdriverIO/Cucumber. | [ADR-013](adr/adr-013.md) |
 | Locator Resolver không phụ thuộc Test Runner; phá chu trình bằng sink tiêm và phiên WebdriverIO toàn cục. | [ADR-014](adr/adr-014.md) |
 | wait-policy là hạ tầng Shared, dùng chung cho tìm phần tử và probe thiết bị. | [ADR-015](adr/adr-015.md) |
@@ -318,7 +321,7 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Test runner | WebdriverIO v9 (`@wdio/cli`, testrunner) | [WebdriverIO Boilerplate Projects](https://webdriver.io/docs/boilerplates/) | ADR-001 |
 | Test framework | Cucumber qua `@wdio/cucumber-framework` | [@wdio/cucumber-framework](https://www.npmjs.com/package/@wdio/cucumber-framework) | ADR-001 |
 | Điều khiển thiết bị | Appium 2 + XCUITest driver | [Appium XCUITest — System Requirements](https://appium.github.io/appium-xcuitest-driver/11.3/getting-started/system-requirements/) | ADR-001 |
-| Lưu trữ kết quả | SQLite qua `better-sqlite3` | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) | ADR-003 |
+| Lưu trữ kết quả | SQLite qua `better-sqlite3`, một store chung `data/database.db` | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) | ADR-003, ADR-020 |
 | Kiểm tra dữ liệu vào lúc chạy | Zod | [Zod](https://zod.dev/) | ADR-008 |
 | Ghi log | Pino | [Pino](https://last9.io/blog/npm-pino-logger/) | ADR-008 |
 | Kiểm thử đơn vị của nền tảng | Vitest | [node:test vs Vitest vs Jest 2026](https://www.pkgpulse.com/guides/node-test-vs-vitest-vs-jest-native-test-runner-2026) | ADR-008 |
@@ -375,7 +378,7 @@ Mã NFR-01 đến NFR-09 theo `brd.md` §9. NFR-10 đến NFR-12 chỉ có ở `
 - `GIẢ ĐỊNH:` Mỗi máy QC có Xcode và Appium 2 cài sẵn; việc chuẩn bị môi trường máy trạm nằm ngoài phạm vi nền tảng và được mô tả bằng tài liệu hướng dẫn cài đặt, với `make doctor` làm công cụ kiểm chứng.
 - `GIẢ ĐỊNH:` Một lượt chạy thực thi tuần tự trên một thiết bị tại một thời điểm. Chạy song song nhiều thiết bị không nằm trong yêu cầu đã chốt.
 - `GIẢ ĐỊNH:` Bản build được cung cấp dưới dạng tệp trên máy QC (`.app` cho simulator, `.ipa` đã ký cho thiết bị thật); nền tảng không tải build từ nguồn từ xa.
-- `GIẢ ĐỊNH:` Thư mục `output/` nằm trong kho mã nhưng không được Git theo dõi. Dữ liệu kết quả không dùng chung giữa các máy QC (AS-04).
+- `GIẢ ĐỊNH:` Các thư mục `data/` (dữ liệu kết quả bền) và `output/` (báo cáo, ảnh — bỏ được) nằm trong kho mã nhưng không được Git theo dõi. Dữ liệu kết quả không dùng chung giữa các máy QC (AS-04).
 - `GIẢ ĐỊNH:` Mọi trạng thái ứng dụng mà test case cần đặt lại đều đặt lại được bằng thao tác qua giao diện. Nếu giả định này sai với một ứng dụng cụ thể, cơ chế đặt lại ở mức nền tảng được đưa vào theo ngưỡng ở §6.
 
 **Các mục cần làm rõ** nằm ở `docs/handoff/open-items.md`.

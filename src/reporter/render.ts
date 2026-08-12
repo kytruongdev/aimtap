@@ -1,46 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import puppeteer from 'puppeteer';
-import {
-  buildReportHtml,
-  dataUriResolver,
-  reportFilePath,
-  type ReportFormat,
-} from './report-html.js';
+import { buildReportHtml, dataUriResolver, reportFilePath } from './report-html.js';
 import type { ReportModel } from './report-model.js';
 
-// TICKET-025: render the report HTML to a single PNG/PDF with Puppeteer's bundled Chromium (ADR-012),
-// so a report looks the same on every QC machine. One file per run, attachable to Jira by hand
-// (BC-05). Regenerated from stored data at any time, never re-running test cases (ADR-006).
-//
-// The pure parts (path, HTML, image embedding) live in report-html.ts and are unit-tested; the
-// browser launch here is verified when a real run produces a report (conventions §3.1).
+// TICKET-025: write the report as a single self-contained HTML file — the model rendered by
+// report-html.ts with screenshots embedded as data URIs (ADR-006). One file per run, opens in any
+// browser, attachable to a ticket by hand. Regenerated from stored data at any time, never re-running
+// test cases (ADR-006). Replaces the earlier Puppeteer PNG/PDF render (reverses ADR-012): the HTML is
+// already self-contained, so no headless browser / bundled Chromium is needed.
 
-export async function render(
-  model: ReportModel,
-  format: ReportFormat,
-  opts: { outputDir?: string } = {},
-): Promise<string> {
+export function render(model: ReportModel, opts: { outputDir?: string } = {}): string {
   const outputDir = opts.outputDir ?? path.join(process.cwd(), 'output');
-  const file = reportFilePath(model, format, outputDir);
+  const file = reportFilePath(model, outputDir);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-
-  const html = buildReportHtml(model, dataUriResolver());
-
-  const browser = await puppeteer.launch({ headless: true });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'load' });
-    if (format === 'pdf') {
-      const bytes = await page.pdf({ format: 'A4', printBackground: true });
-      fs.writeFileSync(file, bytes);
-    } else {
-      await page.setViewport({ width: 1024, height: 768 });
-      const bytes = await page.screenshot({ fullPage: true });
-      fs.writeFileSync(file, bytes);
-    }
-  } finally {
-    await browser.close();
-  }
+  fs.writeFileSync(file, buildReportHtml(model, dataUriResolver()));
   return file;
 }
