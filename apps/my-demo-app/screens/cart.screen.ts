@@ -1,4 +1,4 @@
-import { find, byAccessibilityId, type Locator } from '../../../src/index.js';
+import { find, byAccessibilityId, byPredicate, type Locator } from '../../../src/index.js';
 
 // Page Object for the catalog -> product detail -> cart flow (BR-007, ADR-011). Accessibility ids
 // confirmed via a page-source probe: products are "ProductItem"; the product detail screen has the
@@ -10,6 +10,9 @@ const catalogTab: Locator = byAccessibilityId('Catalog-tab-item');
 const productItem: Locator = byAccessibilityId('ProductItem');
 const addToCart: Locator = byAccessibilityId('AddToCart');
 const cartTab: Locator = byAccessibilityId('Cart-tab-item');
+// The cart count label reads "<n> Items"; matched by pattern so the actual number can be read (rather
+// than waiting for a specific "<n> Items" element that may not exist — which would time the step out).
+const itemCountLabel: Locator = byPredicate("name MATCHES '[0-9]+ Items'");
 
 export const cartScreen = {
   /** Open the catalog, open the first product, and add it to the cart. */
@@ -24,13 +27,9 @@ export const cartScreen = {
     await (await find(cartTab, SCREEN)).click();
   },
 
-  /** Whether the cart shows exactly the given item count. A query, not an assertion. */
-  async showsItemCount(count: number): Promise<boolean> {
-    try {
-      await find(byAccessibilityId(`${count} Items`), SCREEN);
-      return true;
-    } catch {
-      return false;
-    }
+  /** The number of items the cart currently shows. A query, not an assertion. */
+  async itemCount(): Promise<number> {
+    const label = await (await find(itemCountLabel, SCREEN)).getAttribute('name');
+    return Number(/(\d+)/.exec(label ?? '')?.[1] ?? 0);
   },
 };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { assertExpectation } from './assertion.js';
+import { assertExpectation, ASSERTION_SENTINEL } from './assertion.js';
 import { AppFailure, PlatformFailure, isAppFailure } from './errors.js';
 
 describe('assertExpectation', () => {
@@ -7,7 +7,7 @@ describe('assertExpectation', () => {
     await expect(assertExpectation(() => undefined)).resolves.toBeUndefined();
   });
 
-  it('rethrows a failed assertion as an AppFailure tagged assertion', async () => {
+  it('rethrows a failed assertion as an AppFailure tagged assertion, carrying the sentinel', async () => {
     try {
       await assertExpectation(() => {
         throw new Error('expected "Welcome" but got "Hello"');
@@ -16,7 +16,9 @@ describe('assertExpectation', () => {
     } catch (error) {
       expect(isAppFailure(error)).toBe(true);
       expect((error as AppFailure).kind).toBe('assertion');
-      expect((error as Error).message).toBe('expected "Welcome" but got "Hello"');
+      // The kind is also carried in the message (via the sentinel prefix) so it survives Cucumber's
+      // stringify boundary; the classifier strips it back to the original text (ADR-016).
+      expect((error as Error).message).toBe(`${ASSERTION_SENTINEL}expected "Welcome" but got "Hello"`);
     }
   });
 

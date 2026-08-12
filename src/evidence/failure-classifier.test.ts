@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AppFailure, PlatformFailure } from '../shared/index.js';
+import { AppFailure, PlatformFailure, ASSERTION_SENTINEL } from '../shared/index.js';
 import { classifyFailure } from './failure-classifier.js';
 
 describe('classifyFailure', () => {
@@ -7,6 +7,15 @@ describe('classifyFailure', () => {
     const result = classifyFailure(new AppFailure('wrong text', undefined, 'assertion'));
     expect(result.failure_type).toBe('wrong_conclusion');
     expect(result.error_message).toBe('wrong text');
+  });
+
+  it('recovers the assertion kind from the sentinel in a stringified error, stripping it', () => {
+    // The real Cucumber boundary path: the AppFailure object is gone; only its message string arrives,
+    // prefixed by the class name. The sentinel still lets the classifier map it to wrong_conclusion.
+    const stringified = `AppFailure: ${ASSERTION_SENTINEL}Expected two items but found one`;
+    const result = classifyFailure(stringified);
+    expect(result.failure_type).toBe('wrong_conclusion');
+    expect(result.error_message).toBe('AppFailure: Expected two items but found one');
   });
 
   it('maps a step-execution app failure to step_not_executed', () => {

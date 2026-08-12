@@ -10,6 +10,14 @@ import { AppFailure, PlatformFailure } from './errors.js';
 // PlatformFailure (e.g. a matcher that polls the device when the session is lost) is never rewrapped
 // as an assertion, so it stays on the device/run path and is not recorded as a test case failure
 // (ADR-016 consequence).
+//
+// Cross-boundary (ADR-016): @wdio/cucumber-framework hands the failing step's error to afterStep as a
+// plain message string (world.result.message), so the AppFailure object - and its kind - do not
+// survive to the failure classifier. The kind is therefore carried inside the message as a stable
+// sentinel prefix, which the classifier recognises and strips (keeping the original message).
+
+/** Marker carried in an assertion failure's message so its kind survives Cucumber's string boundary. */
+export const ASSERTION_SENTINEL = '[[aimtap:assertion]] ';
 
 export async function assertExpectation(assertion: () => void | Promise<void>): Promise<void> {
   try {
@@ -17,6 +25,6 @@ export async function assertExpectation(assertion: () => void | Promise<void>): 
   } catch (error) {
     if (error instanceof AppFailure || error instanceof PlatformFailure) throw error;
     const message = error instanceof Error ? error.message : String(error);
-    throw new AppFailure(message, undefined, 'assertion');
+    throw new AppFailure(`${ASSERTION_SENTINEL}${message}`, undefined, 'assertion');
   }
 }
