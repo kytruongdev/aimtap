@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { isPlatformFailure, redactObject } from '../shared/index.js';
-import { loadApiKey, loadTestData, verifyTestDataComplete } from './secrets.js';
+import { loadApiKey, loadCliToken, loadTestData, verifyTestDataComplete } from './secrets.js';
 
 function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'aimtap-config-'));
@@ -55,6 +55,44 @@ describe('loadApiKey', () => {
 
     expect(redactObject({ ANTHROPIC_API_KEY: 'sk-secret' })).toEqual({
       ANTHROPIC_API_KEY: '[REDACTED]',
+    });
+  });
+});
+
+describe('loadCliToken', () => {
+  it('reads the token from the root .env.local and prefers it over the ambient env', () => {
+    const root = tmpDir();
+    fs.writeFileSync(
+      path.join(root, '.env.local'),
+      '# ai\nCLAUDE_CODE_OAUTH_TOKEN="tok-from-file"\n',
+    );
+
+    expect(loadCliToken({ rootDir: root, env: { CLAUDE_CODE_OAUTH_TOKEN: 'tok-from-env' } })).toBe(
+      'tok-from-file',
+    );
+  });
+
+  it('falls back to the ambient environment when no file value is set', () => {
+    const root = tmpDir();
+
+    expect(loadCliToken({ rootDir: root, env: { CLAUDE_CODE_OAUTH_TOKEN: 'tok-env' } })).toBe(
+      'tok-env',
+    );
+  });
+
+  it('returns null when the token is unset or blank, so AI features stay off', () => {
+    const root = tmpDir();
+
+    expect(loadCliToken({ rootDir: root, env: {} })).toBeNull();
+    expect(loadCliToken({ rootDir: root, env: { CLAUDE_CODE_OAUTH_TOKEN: '   ' } })).toBeNull();
+  });
+
+  it('registers the token with the log mask', () => {
+    const root = tmpDir();
+    loadCliToken({ rootDir: root, env: { CLAUDE_CODE_OAUTH_TOKEN: 'tok-secret' } });
+
+    expect(redactObject({ CLAUDE_CODE_OAUTH_TOKEN: 'tok-secret' })).toEqual({
+      CLAUDE_CODE_OAUTH_TOKEN: '[REDACTED]',
     });
   });
 });

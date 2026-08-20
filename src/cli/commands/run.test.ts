@@ -12,6 +12,7 @@ const appConfig: AppConfig = {
   deviceType: 'simulator',
   deviceId: 'iPhone 15',
   osVersion: '17.5',
+  ai: { enabled: false, healRetries: 3 },
 };
 const deviceContext: DeviceContext = {
   device_id: 'iPhone 15',

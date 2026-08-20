@@ -14,6 +14,7 @@ const appConfig: AppConfig = {
   deviceType: 'simulator',
   deviceId: 'sim-1',
   osVersion: '17.0',
+  ai: { enabled: false, healRetries: 3 },
 };
 
 function fakeDriver(overrides: Partial<DeviceDriver> = {}): DeviceDriver {
