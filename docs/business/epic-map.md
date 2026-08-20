@@ -24,9 +24,10 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 | EP-11 | [CORE] | Sinh test case từ mô tả bằng lời và page source của màn hình đích thông qua Claude. | 2 |
 | EP-12 | [CORE] | Xác nhận test case thực hiện đúng điều đã mô tả, bằng cách đọc phần mô tả hành vi bằng ngôn ngữ tự nhiên, không cần đọc phần cài đặt. | 2 |
 | EP-13 | [CORE] | Tự phục hồi test case khi một locator không tìm thấy lúc chạy, thay vì dừng test case giữa chừng. | 2 |
-| EP-14 | [CORE] | Nhận cảnh báo cho mỗi lần tự phục hồi và xác nhận hoặc bác bỏ locator được đề xuất. | 2 |
-| EP-15 | [NICE] | Đưa locator đã xác nhận vào Page Object dưới dạng một thay đổi chờ phê duyệt. | 2 |
-| EP-16 | [FUTURE] | Soạn và chạy test case cho ứng dụng Android. | — |
+| EP-14 | [CORE] | Xem mỗi lần tự phục hồi trong báo cáo (kèm locator cũ→mới và ảnh phần tử AI đã dùng) để đánh giá AI đoán đúng không. | 2 |
+| EP-15 | [CORE] | Con người tự cập nhật locator đúng vào Page Object và mở pull request được duyệt sau khi xem báo cáo tự phục hồi; nền tảng không tự tạo pull request. | 2 |
+| EP-30 | [FUTURE] | Giao diện đồ họa xem báo cáo và thống kê chất lượng (gộp cùng lớp phân tích). | — |
+| EP-16 | [CORE] | Soạn và chạy test case cho ứng dụng Android. | 3 |
 
 ## Reviewer
 
@@ -40,8 +41,8 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 | Mã | Nhãn | Epic | Giai đoạn |
 |---|---|---|---|
 | EP-19 | [CORE] | Lưu bản ghi kết quả có cấu trúc cho mỗi test case trong mỗi lượt chạy để phục vụ phân tích về sau. | 1 |
-| EP-20 | [CORE] | Truy vấn dữ liệu đã tích lũy để trả lời câu hỏi về tỷ lệ vượt qua theo thời gian, màn hình hay hỏng và test case thiếu ổn định. | 3 |
-| EP-21 | [NICE] | Xem xu hướng chất lượng dưới dạng biểu đồ. | 3 |
+| EP-20 | [CORE] | Truy vấn dữ liệu đã tích lũy để trả lời câu hỏi về tỷ lệ vượt qua theo thời gian, màn hình hay hỏng và test case thiếu ổn định. | 4 |
+| EP-21 | [NICE] | Xem xu hướng chất lượng dưới dạng biểu đồ. | 4 |
 | EP-22 | [FUTURE] | Tổng hợp dữ liệu kết quả từ nhiều máy QC vào một nơi. | — |
 
 ## Lập trình viên
@@ -56,8 +57,10 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 |---|---|---|---|
 | EP-24 | [CORE] | Khai báo một ứng dụng cần kiểm thử vào nền tảng: định danh ứng dụng, bản build, thiết bị và phiên bản hệ điều hành đích, mà không phải sửa nền tảng. | 1 |
 | EP-25 | [CORE] | Vận hành song song nhiều ứng dụng được kiểm thử trên cùng một nền tảng, mỗi ứng dụng có test suite và dữ liệu kết quả riêng. | 1 |
-| EP-26 | [CORE] | Lưu khóa API của Claude ngoài kho mã. | 2 |
-| EP-27 | [CORE] | Bật hoặc tắt việc gọi Claude bằng cấu hình. | 2 |
+| EP-26 | [CORE] | Lưu token của AI CLI ngoài kho mã (cài một lần). | 2 |
+| EP-27 | [CORE] | Bật hoặc tắt việc gọi AI bằng cấu hình. | 2 |
+| EP-28 | [CORE] | Nền tảng gọi AI bằng cách chủ động gọi một AI CLI bên ngoài (như Claude Code). | 2 |
+| EP-29 | [CORE] | Cài đặt và kiểm tra AI CLI cùng token trên máy (chọn CLI, lấy token, kiểm hiện diện). | 2 |
 
 ---
 

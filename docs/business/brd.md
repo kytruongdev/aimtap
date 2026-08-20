@@ -8,9 +8,9 @@ Tài liệu này mô tả yêu cầu nghiệp vụ của toàn dự án, bao tr�
 
 Nền tảng tự động hóa kiểm thử ứng dụng di động, chạy nội bộ trên máy của QC, thay thế phần kiểm thử hồi quy đang thực hiện thủ công. Người dùng là đội QC nội bộ.
 
-Nền tảng là công cụ dùng chung, không gắn với một ứng dụng cụ thể: mọi thứ phụ thuộc vào ứng dụng được kiểm thử (bản build, locator, Page Object, test case, cấu hình thiết bị) đều được khai báo từ bên ngoài, để cùng một nền tảng áp dụng được cho ứng dụng di động bất kỳ. Nền tảng iOS được hỗ trợ trước, Android chưa nằm trong phạm vi.
+Nền tảng là công cụ dùng chung, không gắn với một ứng dụng cụ thể: mọi thứ phụ thuộc vào ứng dụng được kiểm thử (bản build, locator, Page Object, test case, cấu hình thiết bị) đều được khai báo từ bên ngoài, để cùng một nền tảng áp dụng được cho ứng dụng di động bất kỳ. Nền tảng iOS được hỗ trợ trước; Android được bổ sung ở Phase 3.
 
-Dự án triển khai theo ba giai đoạn: nền tảng thực thi cơ bản không có AI, sau đó bổ sung AI hỗ trợ soạn test case và tự phục hồi locator, cuối cùng là lớp phân tích xu hướng chất lượng. Mỗi giai đoạn được đưa vào sử dụng và chứng minh giá trị trước khi mở rộng sang giai đoạn kế tiếp.
+Dự án triển khai theo bốn phase: nền tảng thực thi iOS không có AI; bổ sung AI hỗ trợ soạn test case và tự phục hồi locator; bổ sung hỗ trợ Android; và lớp phân tích xu hướng chất lượng. Mục tiêu go-live là nền tảng phủ cả iOS, Android và AI. Mỗi phase được đưa vào sử dụng và chứng minh giá trị trước khi mở rộng sang phase kế tiếp.
 
 ### 1.1. Từ vựng trung tâm
 
@@ -41,7 +41,7 @@ Một test case kiểm tra đúng một hành vi và chạy độc lập đượ
 | BO-04 | Tích lũy dữ liệu kết quả kiểm thử có cấu trúc để trả lời được các câu hỏi về xu hướng chất lượng. |
 | BO-05 | Giữ quyền kết luận chất lượng thuộc về con người khi đưa AI vào quy trình. |
 | BO-06 | Áp dụng được cho ứng dụng di động bất kỳ, không phụ thuộc vào nghiệp vụ của một ứng dụng cụ thể. |
-| BO-07 | Hạ ngưỡng kỹ năng để soạn một test case: từ Phase 2, người soạn test case không cần viết hay đọc phần cài đặt. |
+| BO-07 | Tăng năng suất soạn và bảo trì test case bằng AI: từ Phase 2, AI sinh test case từ mô tả và tự phục hồi locator, giúp QC automation làm nhanh hơn. |
 
 ---
 
@@ -55,17 +55,11 @@ Một test case kiểm tra đúng một hành vi và chạy độc lập đượ
 | Lập trình viên | Cung cấp bản build đã ký; tiếp nhận lỗi do kiểm thử phát hiện. | Nhận được thông tin lỗi đủ để tái hiện: bước hỏng, các bước đã chạy trước đó, ảnh chụp lúc hỏng, tên màn hình, loại lỗi. |
 | Product Owner | Phê duyệt phạm vi và trình tự giai đoạn; cấp nguồn lực; kiểm soát quy trình rà soát pull request. | Mỗi giai đoạn có kết quả dùng được, không phải chờ hệ thống hoàn chỉnh. |
 
-### 3.1. Năng lực yêu cầu ở vai trò QC theo từng phase
+### 3.1. Năng lực của vai trò QC
 
-| Phase | Viết phần cài đặt của test case | Đọc phần cài đặt của test case | Đọc và viết mô tả hành vi bằng tiếng Anh |
-|---|---|---|---|
-| 1 | Bắt buộc | Bắt buộc | Bắt buộc |
-| 2 | Không | Không | Bắt buộc |
-| 3 | Không | Không | Bắt buộc |
+Người dùng chính là **QC automation — biết code** ở mọi phase: viết và đọc được phần cài đặt của test case, dùng git và pull request. Từ Phase 2, AI **giảm công** soạn và bảo trì (sinh test từ mô tả, tự phục hồi locator), nhưng không thay quyền quyết: QC automation vẫn rà soát và chịu trách nhiệm; việc chấp nhận đi qua pull request.
 
 Tiếng Anh là ngôn ngữ chính của đội. Toàn bộ nội dung trong kho mã, gồm cả phần mô tả hành vi của test case, viết bằng tiếng Anh.
-
-Từ Phase 2, QC xác nhận test case qua phần mô tả hành vi. Việc rà soát phần cài đặt thuộc về vai trò Reviewer, thực hiện trong pull request.
 
 ---
 
@@ -118,9 +112,10 @@ flowchart LR
 | Dữ liệu kết quả tích lũy theo từng lượt chạy, làm nền cho phân tích về sau. | QC Lead | Phase 1 |
 | Một nền tảng dùng lại được cho ứng dụng tiếp theo mà không phải dựng lại từ đầu. | QC Lead, Product Owner | Phase 1 |
 | Thời gian soạn một test case mới giảm, do AI sinh test case từ mô tả và page source. | QC | Phase 2 |
-| Người soạn test case không cần biết lập trình, nên số người soạn được test case không còn giới hạn ở người biết code. | QC Lead, Product Owner | Phase 2 |
+| Chi phí AI thấp và không phải tự quản khóa hay nhà cung cấp, do dùng lại một AI CLI thuê bao cài trên máy. | QC Lead, Product Owner | Phase 2 |
 | Chi phí bảo trì test case giảm khi giao diện thay đổi, do locator hỏng được tìm lại lúc chạy thay vì làm dừng cả lượt chạy. | QC | Phase 2 |
-| Trả lời được câu hỏi về xu hướng chất lượng: tỷ lệ vượt qua theo thời gian, màn hình hay hỏng, test case thiếu ổn định. | QC Lead, Product Owner | Phase 3 |
+| Nền tảng phủ được cả ứng dụng Android, không chỉ iOS. | QC, QC Lead, Product Owner | Phase 3 |
+| Trả lời được câu hỏi về xu hướng chất lượng: tỷ lệ vượt qua theo thời gian, màn hình hay hỏng, test case thiếu ổn định. | QC Lead, Product Owner | Phase 4 |
 
 ---
 
@@ -167,8 +162,8 @@ flowchart LR
 ### QC — xử lý một lần tự phục hồi (Phase 2)
 1. Trong lúc chạy, một locator không tìm thấy.
 2. Nền tảng gọi Claude tìm lại thành phần tương ứng và tiếp tục test case.
-3. Nền tảng ghi lại lần tự phục hồi, đặt trạng thái test case là "đạt kèm tự phục hồi", và phát cảnh báo trong báo cáo.
-4. QC xác nhận locator được đề xuất; thay đổi Page Object tương ứng đi qua pull request như mọi thay đổi khác.
+3. Nền tảng ghi lại lần tự phục hồi vào báo cáo và đặt trạng thái test case là "đạt kèm tự phục hồi".
+4. Sau khi lượt chạy xong, QC automation mở báo cáo, xem locator cũ→mới và ảnh phần tử AI đã dùng; nếu AI đoán đúng thì tự cập nhật locator vào Page Object và mở pull request (nền tảng không tự tạo pull request), nếu AI đoán nhầm thì điền locator đúng.
 
 ### QC Lead — xem xu hướng chất lượng (Phase 3)
 1. Truy vấn dữ liệu kết quả đã tích lũy.
@@ -186,16 +181,18 @@ flowchart LR
 - Cài bản build ứng dụng iOS lên thiết bị thật hoặc simulator trước khi chạy.
 - Thực thi test suite trên thiết bị thật và trên simulator.
 - Thu thập bằng chứng thực thi cho mỗi test case: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng.
-- Xuất báo cáo PNG/PDF cho mỗi lượt chạy, ở định dạng đính được vào Jira.
+- Xuất báo cáo HTML tự chứa cho mỗi lượt chạy (ảnh nhúng sẵn), đính được vào Jira.
 - Ghi bản ghi kết quả dạng JSON cho mỗi test case trong mỗi lượt chạy, lưu vào SQLite trên máy QC.
-- Sinh test case qua Claude từ mô tả bằng lời và page source.
+- Sinh test case qua AI từ mô tả bằng lời và page source.
 - Đưa phần mô tả hành vi của test case tới QC để xác nhận mà không cần đọc phần cài đặt.
-- Tự phục hồi locator lúc chạy qua Claude, kèm ghi nhận và phát cảnh báo cho mỗi lần tự phục hồi.
-- Bật hoặc tắt việc gọi Claude bằng cấu hình.
+- Tự phục hồi locator lúc chạy qua AI, ghi nhận mỗi lần tự phục hồi vào báo cáo.
+- Bật hoặc tắt việc gọi AI bằng cấu hình. Nền tảng dùng AI bằng cách chủ động gọi một AI CLI bên ngoài (như Claude Code).
+- Cài đặt và kiểm tra AI CLI trên máy: chọn CLI, lấy token, lưu token ngoài kho mã.
+- Kiểm thử ứng dụng Android, bổ sung ở Phase 3.
 - Truy vấn dữ liệu đã tích lũy để trả lời câu hỏi xu hướng.
 
 ### Ngoài phạm vi
-- Kiểm thử ứng dụng Android. Toàn bộ nguồn lực tập trung cho iOS.
+- Giao diện đồ họa (cấu hình hay xem báo cáo); nền tảng tự quản nhiều nhà cung cấp AI hay khóa API — dùng một AI CLI bên ngoài thay thế.
 - Test case, Page Object và tri thức nghiệp vụ của một ứng dụng cụ thể. Nền tảng cung cấp cơ chế; nội dung test case do QC của từng ứng dụng soạn.
 - Chụp màn hình ở mọi bước của test case. Ảnh chỉ được chụp tại bước hỏng và tại các bước được đánh dấu tường minh.
 - Cơ chế đặt lại ứng dụng giữa các lượt chạy. Mỗi test case tự đưa ứng dụng về trạng thái nó cần.
@@ -217,9 +214,9 @@ flowchart LR
 | Mã | Ràng buộc |
 |---|---|
 | BC-01 | Kiểm thử iOS yêu cầu máy macOS. Giai đoạn đầu cần tối thiểu một máy Mac. |
-| BC-02 | Nền tảng chạy nội bộ trên máy QC, không có máy chủ, không triển khai online. |
+| BC-02 | Nền tảng chạy cục bộ trên máy QC, không phụ thuộc máy chủ từ xa, không phải dịch vụ online nhiều người dùng. Không có giao diện đồ họa. |
 | BC-03 | Bản build do lập trình viên cung cấp, đã ký đúng và sẵn sàng cài lên thiết bị. |
-| BC-04 | Việc gọi Claude yêu cầu kết nối mạng và một khóa API hợp lệ; phát sinh chi phí theo lượt gọi. |
+| BC-04 | Việc gọi AI yêu cầu một AI CLI (Claude Code) cài trên máy, có token hợp lệ và kết nối mạng; chi phí theo thuê bao của CLI. |
 | BC-05 | Jira là điểm tổng hợp kết quả. Thao tác đính báo cáo do QC thực hiện thủ công. |
 | BC-06 | Kết quả kiểm thử chỉ có giá trị lặp lại khi chạy trên bản build chính thức và mỗi test case tự đảm bảo điều kiện tiên quyết của nó. |
 | BC-07 | Test case và Page Object được quản lý bằng Git, nằm chung kho mã với nền tảng. |
@@ -227,6 +224,7 @@ flowchart LR
 | BC-09 | Nền tảng hỗ trợ thực thi trên cả thiết bị thật và simulator. |
 | BC-10 | Tiếng Anh là ngôn ngữ chính của đội. Toàn bộ nội dung trong kho mã viết bằng tiếng Anh. |
 | BC-11 | Mỗi lần chụp màn hình tốn từ vài trăm mili giây tới vài giây tùy thiết bị, nên số lần chụp trong một lượt chạy được giữ ở mức tối thiểu. |
+| BC-12 | Máy chạy nền tảng phải cài AI CLI (Claude Code) và có token hợp lệ để dùng tính năng AI; thiếu thì tính năng AI không chạy, phần chạy test vẫn hoạt động. |
 
 ---
 
@@ -234,14 +232,14 @@ flowchart LR
 
 | Mã | Yêu cầu | Giai đoạn |
 |---|---|---|
-| NFR-01 | Nền tảng chạy nội bộ trên máy QC, không yêu cầu máy chủ hay triển khai online. | 1 |
+| NFR-01 | Nền tảng chạy cục bộ trên máy QC, không phụ thuộc máy chủ từ xa hay dịch vụ hosted. | 1 |
 | NFR-02 | Kiểm thử iOS chạy trên macOS. | 1 |
 | NFR-03 | Test case chạy trên bản build chính thức và cho kết quả lặp lại, không phụ thuộc thứ tự chạy hay trạng thái còn lại từ lượt chạy trước. | 1 |
-| NFR-04 | Khóa API của Claude được lưu an toàn và không nằm trong kho mã. | 2 |
-| NFR-05 | Việc gọi Claude lúc chạy kiểm soát được về độ trễ và chi phí, bật hoặc tắt được bằng cấu hình. | 2 |
+| NFR-04 | Token của AI CLI được lưu an toàn ngoài kho mã; nền tảng không giữ khóa API riêng. | 2 |
+| NFR-05 | Việc gọi AI lúc chạy kiểm soát được về độ trễ và chi phí, bật hoặc tắt được bằng cấu hình. | 2 |
 | NFR-06 | Quyền kết luận đạt hay hỏng và quyền chấp nhận test case thuộc về con người. AI chỉ hỗ trợ. Việc chấp nhận test case thực hiện qua phê duyệt pull request. | 2 |
 | NFR-07 | Nền tảng không chứa tri thức riêng của bất kỳ ứng dụng nào. Mọi thông tin phụ thuộc ứng dụng được khai báo từ bên ngoài, để đưa một ứng dụng mới vào kiểm thử không cần sửa nền tảng. | 1 |
-| NFR-08 | Từ Phase 2, mọi thao tác của QC trên nền tảng thực hiện được mà không cần đọc hay viết phần cài đặt của test case. | 2 |
+| NFR-08 | Từ Phase 2, QC automation xác nhận được test case do AI sinh qua phần mô tả hành vi mà không phải đọc phần cài đặt (dù có kỹ năng đọc code). | 2 |
 | NFR-09 | Phần mô tả hành vi của test case luôn khớp với hành vi được thực thi. | 1 |
 
 Yêu cầu phi chức năng ở mức chi tiết hơn, gồm hiệu năng thu thập bằng chứng và ngôn ngữ trong kho mã, nằm ở `docs/requirement.md` §5 với mã từ NFR-10 trở đi.

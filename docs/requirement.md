@@ -26,7 +26,7 @@ Mục tiêu là xây dựng một nền tảng tự động hóa kiểm thử ch
 
 Nền tảng là công cụ dùng chung, không gắn với một ứng dụng cụ thể. Mọi thông tin phụ thuộc ứng dụng được khai báo từ bên ngoài.
 
-Việc triển khai chia thành ba giai đoạn: giai đoạn 1 dựng nền tảng cơ bản chưa có AI, giai đoạn 2 bổ sung AI, giai đoạn 3 bổ sung lớp phân tích. Mỗi yêu cầu trong tài liệu được gắn nhãn giai đoạn tương ứng.
+Việc triển khai chia thành bốn phase: phase 1 dựng nền tảng iOS cơ bản chưa có AI, phase 2 bổ sung AI, phase 3 bổ sung hỗ trợ Android, phase 4 bổ sung lớp phân tích. Mục tiêu go-live là nền tảng phủ cả iOS, Android và AI. Mỗi yêu cầu trong tài liệu được gắn nhãn phase tương ứng.
 
 Quy ước: từ "phải" biểu thị yêu cầu bắt buộc. Mỗi yêu cầu có một mã để tiện tham chiếu và truy vết.
 
@@ -34,9 +34,9 @@ Quy ước: từ "phải" biểu thị yêu cầu bắt buộc. Mỗi yêu cầu
 
 ## 2. Phạm vi
 
-**Trong phạm vi.** Khai báo một ứng dụng di động bất kỳ vào nền tảng; soạn test case (thủ công và có hỗ trợ AI); thực thi test case trên thiết bị iOS, cả thiết bị thật và simulator; tự phục hồi test case khi giao diện thay đổi; xuất báo cáo cho mỗi lượt chạy; lưu dữ liệu kết quả để phân tích; và lớp phân tích xu hướng.
+**Trong phạm vi.** Khai báo một ứng dụng di động bất kỳ vào nền tảng; soạn test case (thủ công và có hỗ trợ AI); thực thi test case trên thiết bị iOS, cả thiết bị thật và simulator; kiểm thử ứng dụng Android (bổ sung ở phase 3); tự phục hồi test case khi giao diện thay đổi; xuất báo cáo cho mỗi lượt chạy; lưu dữ liệu kết quả để phân tích; và lớp phân tích xu hướng.
 
-**Ngoài phạm vi.** Kiểm thử ứng dụng Android; test case và tri thức nghiệp vụ của một ứng dụng cụ thể; máy chủ kết quả tập trung và tổng hợp dữ liệu xuyên nhiều máy QC; tích hợp vào quy trình CI/CD; dịch vụ thiết bị trên cloud; việc AI tự phê duyệt test case hay tự quyết định chất lượng; cơ chế đặt lại ứng dụng giữa các lượt chạy; cơ chế dọn dữ liệu do test case sinh ra trên môi trường test; chụp màn hình ở mọi bước của test case; chi tiết kiến trúc, cấu hình và quy ước viết mã (thuộc tài liệu thiết kế kỹ thuật).
+**Ngoài phạm vi.** Test case và tri thức nghiệp vụ của một ứng dụng cụ thể; máy chủ kết quả tập trung và tổng hợp dữ liệu xuyên nhiều máy QC; tích hợp vào quy trình CI/CD; dịch vụ thiết bị trên cloud; việc AI tự phê duyệt test case hay tự quyết định chất lượng; cơ chế đặt lại ứng dụng giữa các lượt chạy; cơ chế dọn dữ liệu do test case sinh ra trên môi trường test; chụp màn hình ở mọi bước của test case; chi tiết kiến trúc, cấu hình và quy ước viết mã (thuộc tài liệu thiết kế kỹ thuật).
 
 ---
 

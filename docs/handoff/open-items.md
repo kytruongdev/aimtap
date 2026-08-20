@@ -8,7 +8,68 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
-### CẦN BA + TEAM-LEAD LÀM: Khởi động US-5.2 — chốt app thí điểm (AUT) và chuỗi requirement → `.feature` → chạy thật
+### CẦN BA LÀM: re-scope Phase 2 sang hướng B (AI CLI ngoài) — *đã xử lý (BA, 2026-08-20)*
+Bối cảnh: Product team chọn **phương án B** — QC automation điều khiển một **AI CLI bên ngoài** (ví dụ Claude Code); nền tảng mỏng, KHÔNG nhúng AI. Phân tích lý do: `docs/business/ai-integration-analysis.md`.
+
+- **Bộ tài liệu hướng A đã được BẢO TOÀN** nguyên vẹn ở `docs/business/ai-embedded-approach/` (kèm `README.md` nêu trạng thái "giữ cho tương lai"). Product team xác nhận có giá trị, dùng về sau — KHÔNG sửa/ghi đè.
+- **BA đã làm (2026-08-19):** đặc tả Phase 2 hướng B (B-chủ-động) viết xong + tự rà + verify tại `docs/business/phase-2/` (4 file: srs, use-cases, user-stories, business-rules). Nền tảng tự trigger AI CLI; tự phục hồi lúc chạy GIỮ (persist qua PR); bỏ đa nhà cung cấp/giao diện/khóa → token CLI + `make setup`/`doctor`; "đạt kèm tự phục hồi" = nhãn dẫn xuất (khớp ADR-024). Truy vết đủ, không dư âm A. Hai câu hỏi mở trước đây đã được posture B-chủ-động trả lời.
+- **BA đã cập nhật tài liệu nền (2026-08-19 → 2026-08-20):** `brd.md` (BO-07/NFR-08 → năng suất; §7 phạm vi bỏ đa nhà cung cấp+giao diện, thêm AI-qua-CLI + cài đặt; NFR-04 khóa→token; BC-12 ràng buộc CLI+token; §3.1 người dùng = QC automation biết code), `epic-map.md` (EP-26 khóa→token; EP-28/29 sang hướng CLI; EP-30→FUTURE), `phase-proposal.md` Phase 2, `change-log.md`. Đã gỡ luôn dư âm hướng A (auto-PR) khỏi tài liệu nền — xem mục "bỏ nền tảng tự tạo PR" đã xử lý bên dưới.
+
+**Hệ quả cho SA:** cụm ADR-021→024 (xây cho hướng A) được đánh giá lại theo B — xem mục "Posture B-chủ-động" ngay dưới: ADR-021/022/023 thay bằng cách tiếp cận CLI, ADR-024 (mô hình heal + persist-qua-PR) phần lớn dùng lại. Hai mục cũ "CẦN PO DUYỆT ADR-021→024" và "CẦN BA hệ quả doc" đã gỡ (moot theo B).
+
+### CẦN BA ĐỌC + SA GIỮ: Posture "B-chủ-động" — nền tảng tự trigger AI CLI (chốt kỹ thuật SA↔PO, 2026-08-19)
+Đây là kết quả buổi bàn kỹ thuật giữa SA và PO, cụ thể hóa hướng B ở mục trên và **trả lời hai câu hỏi mở PO đang giữ**. Là input định hướng của PO cho spec B; phần ranh giới functional vẫn do BA ratify.
+
+**BA đã đọc + ratify vào spec B (2026-08-19):** ranh giới functional đã đưa vào `docs/business/phase-2/` (giữ tự phục hồi lúc chạy; bỏ đa nhà cung cấp/giao diện/khóa → token CLI + cài đặt; nhãn "đạt kèm tự phục hồi"). **Spec B đã sẵn sàng cho SA** viết ADR mới + reconcile ADR-021→024.
+
+**Posture chốt — "B-chủ-động":** trong hướng B, nền tảng KHÔNG thụ động chờ dev lái CLI. Nền tảng **tự trigger AI CLI (Claude Code) như một tiến trình con** (headless `claude -p` / Agent SDK) tại các điểm cần AI, rồi tự lo phần còn lại. Dung hòa: giữ cái rẻ của B (dùng lại Claude Code trên máy, không mua key Claude Platform) mà lấy lại cái tiện của A (tester không phải ngồi prompt tay từng lần).
+
+**Bốn quyết định đã chốt với PO:**
+- **A. Posture = B-chủ-động** (nền tảng tự trigger CLI). *(trả lời câu hỏi mở #1: nền tảng CHỦ ĐỘNG về AI, không thụ động.)*
+- **B. Tự phục hồi locator: GIỮ cơ chế lúc chạy.** *(trả lời câu hỏi mở #2 — trước giả định "B không in-run"; SA xác minh in-run VẪN khả thi & rẻ qua CLI.)* Mô hình:
+  - *Lúc chạy:* locator hỏng → gọi `claude -p` (chỉ đọc; cho page source + locator hỏng) → nhận **một chuỗi locator** → thử live trong bộ nhớ → chạy tiếp. Test **không dừng giữa chừng**. KHÔNG sửa file lúc chạy (tiến trình đang chạy không nhận thay đổi file).
+  - *Sau lượt chạy:* locator đúng (cũ→mới) được ghi lại và **tạo PR** sửa Page Object; con người duyệt PR (BC-08). PO nhấn mạnh: **locator đúng phải được lưu lại qua PR**.
+- **C. Auth = `CLAUDE_CODE_OAUTH_TOKEN`** (token dài hạn từ `claude setup-token`, tính theo subscription — rẻ), lưu trong file env gitignored. KHÔNG dùng `ANTHROPIC_API_KEY` (per-token, mất lợi thế chi phí).
+- **D. Một CLI (Claude Code) giai đoạn này**, nhưng project structure **chuẩn bị sẵn + aware** để mở rộng CLI khác về sau: đoạn trigger đặt sau một seam nội bộ (kiểu `CodeAgent` port), thêm adapter CLI thứ hai chỉ khi cần.
+
+**Hệ quả functional cho BA đưa vào spec B:**
+- Tự phục hồi vẫn là **năng lực lúc chạy của nền tảng** (không chỉ lúc soạn) — sửa lại giả định "B không in-run" ở câu hỏi #2.
+- Nền tảng **không giữ khóa AI, không quản đa nhà cung cấp, không có giao diện cấu hình AI** — auth là token CLI trong env; các mảng EP-28/29 rời phạm vi nền tảng (đúng như BA đã dự tính).
+- Ràng buộc môi trường mới: mỗi máy phải **cài Claude Code + có token** (như Xcode/Appium). Cơ chế PO hình dung: `make setup` (chọn CLI → check/cài → hướng dẫn chạy `claude setup-token` một lần → lưu token vào env gitignored) + `make doctor` kiểm hiện diện + token.
+- Quyền chấp nhận vẫn ở con người qua PR (BR-210/BC-08 giữ nguyên). Sinh test case cũng theo posture này (nền tảng trigger CLI với AC/mô tả → sinh file → chạy xanh → PR).
+
+**Hệ quả kiến trúc (SA giữ, làm khi có spec B):**
+- **ADR-021** (giao diện cấu hình AI), **ADR-022** (AI Client đa nhà cung cấp nội bộ), **ADR-023** (config.db lưu khóa) — **thay bằng cách tiếp cận CLI**. Sẽ viết ADR mới cho: cơ chế trigger CLI + seam `CodeAgent` (D); auth token (C); điểm chèn heal qua CLI (B).
+- **ADR-024 (heal_event + status passed/failed + nhãn dẫn xuất + persist-qua-PR) phần lớn DÙNG LẠI** — chỉ đổi *nguồn* locator từ AI Client nội bộ sang CLI. Các file ADR-021→024 vẫn giữ (không xóa), park cùng bộ hướng A.
+- Mới: tích hợp git/gh để tạo PR (lần đầu `src/` chạm git); `make setup`/`doctor` cho CLI; cạm bẫy "không sửa file giữa run".
+- Điểm cần chốt khi thiết kế: PR-persist là **edit cơ học old→new + gh** (nền tảng tự làm, deterministic) hay nhờ CLI agent sửa — SA nghiêng edit cơ học (kiểm soát được, dùng CLI chỉ cho khâu suy ra locator).
+
+**Nguồn kỹ thuật đã verify (Claude Code):** headless `-p` + `--output-format json` + `--allowedTools`/`--permission-mode` ([code.claude.com/docs/en/headless](https://code.claude.com/docs/en/headless)); auth `CLAUDE_CODE_OAUTH_TOKEN` qua `claude setup-token`, subscription billing, không cần browser mỗi lần ([code.claude.com/docs/en/authentication](https://code.claude.com/docs/en/authentication)).
+
+### CẦN SA LÀM RÕ: ranh giới kiểu `Locator` cho AI Gateway (Phase 2, US-7.2) — *đã xử lý (SA, 2026-08-20)*
+Bối cảnh: AI Gateway (`src/ai/`, ADR-025) parse đầu ra heal của AI CLI thành một `Locator` (interface-spec §CodeAgent `healLocator(): Promise<Locator | null>`). Kiểu `Locator` hiện ở module `locator` (`src/locator/locator.ts`). Sau khi thêm resolver TS (`fe1d1ed`), `eslint-plugin-boundaries` bắt cả type-import, nên cần một quyết định ranh giới:
+- **PA1 (SA nghiêng):** nâng kiểu `Locator` + enum chiến lược lên `shared` (giữ bộ dựng locator đặc thù iOS ở `locator`, re-export cho tương thích nguồn). AI Gateway import `Locator` từ `shared` → dependency `ai → shared, config`, không cạnh `ai → locator`. Hợp guardrail OS-agnostic (CodeAgent page-source-vào/locator-ra, ADR-025).
+- **PA2:** cho cạnh `ai → locator` type-only trong ma trận `element-types`.
+Cả hai chạm khuôn khổ (ma trận phụ thuộc / vị trí kiểu ở kernel) nên Team Lead đẩy về SA thay vì tự quyết. **Team Lead khuyến nghị PA1** (khớp lean của SA). Ảnh hưởng: một dòng import ở US-7.2 (TICKET-036) + luật `element-types` của `ai` (US-6.2 TICKET-030 hiện đặt `{ from: ['ai'], allow: ['shared', 'config'] }` theo PA1). Không chặn viết ticket; chặn hiện thực US-7.2 ở mức đường import. Nếu SA chọn PA1: xác nhận phạm vi hoisting (kiểu + enum) và ai làm bước move (Team Lead đưa vào US-7.2 như bước hiện thực SA-đã-chốt).
+
+**Chốt SA (2026-08-20): PA1 — [ADR-027](../architecture/adr/adr-027.md).** Nâng kiểu `Locator` + enum `LocatorStrategy` lên `shared`; bộ dựng iOS / `toSelector` / `describeLocator` / logic find giữ ở `locator` (re-export kiểu để tương thích nguồn). **Phạm vi hoisting = kiểu + enum** (KHÔNG phải bộ dựng). Bước move là bước hiện thực trong **US-7.2** (SA-đã-chốt). Ma trận `{ from: ['ai'], allow: ['shared', 'config'] }` (TICKET-030) **giữ nguyên** — không cạnh `ai → locator`. Đã cập nhật `north-star.md` §2.1/§3. Team Lead tiến hành US-7.2 theo PA1.
+
+### CẦN SA ĐỒNG BỘ (không chặn): chữ "Claude Client" còn sót sau pivot B — *đã xử lý (SA, 2026-08-20)*
+`coding-convention.md` §"Gọi Claude API" (dòng ~89–93, "thêm bởi: SA") và `CLAUDE.md` §5 còn ghi "Mọi lời gọi Claude qua Claude Client" — mô tả hướng A. Sau pivot B (ADR-025), đường gọi AI là **AI Gateway / CodeAgent gọi AI CLI ngoài qua subprocess**. Tài liệu này SA/PO sở hữu (CLAUDE.md là tầng bất biến); Team Lead ghi để SA đồng bộ chữ, không tự sửa.
+
+**Đã đồng bộ (SA, 2026-08-20):** `coding-convention.md` §đổi "Gọi Claude API" → "Gọi AI (qua AI CLI ngoài)" (mọi lời gọi AI qua AI Gateway/`CodeAgent`, subprocess `claude -p`, đầu ra qua Zod, AI Gateway trả `null` không ném) + dòng 59 "phản hồi của Claude"→"AI CLI"; `CLAUDE.md` §5 dòng "Mọi lời gọi AI PHẢI qua AI Gateway (port `CodeAgent`)... gọi AI CLI ngoài qua subprocess (ADR-025)". Không còn "Claude Client" mô tả đường gọi.
+
+### CẦN BA LÀM: bỏ "nền tảng tự tạo PR" khỏi tự phục hồi — *đã xử lý (BA, 2026-08-20)*
+PO chốt: trong hướng B, git/commit/tạo-PR do **con người (QC automation) làm sau khi review kỹ**; nền tảng **KHÔNG** tự tạo PR.
+**BA đã sửa (2026-08-20):** không chỉ 3 chỗ được nêu mà **9 chỗ** dư âm hướng A — FR-HEAL-07 (ghi locator cũ→mới + ảnh vào báo cáo, không tạo PR), NFR-203, BR-203, BR-210 (+ state diagram vòng đời tự phục hồi + ghi chú), US-203 (actor Reviewer→QC automation; con người tự áp + mở PR), §mở đầu use-cases, EP-14/EP-15 (epic-map), brd §6 happy path. Verify grep: mọi mention còn lại là câu phủ định đúng ("nền tảng **không** tự tạo PR") hoặc thuộc luồng sinh test case (Reviewer duyệt PR test AI sinh — đúng vai). Ghi change-log 2026-08-20.
+Nguyên tắc thống nhất đã vào spec: **nền tảng gọi AI CLI cho việc AI** (heal lấy chuỗi locator, sinh test file); **mọi thao tác git/PR là của con người sau review**. SA thiết kế bỏ tích hợp git/gh khỏi `src/`.
+
+### CẦN SA ĐÁNH GIÁ: Re-scope lộ trình — Android → Phase 3, phân tích → Phase 4 (Phase 2 giữ nguyên)
+Bối cảnh: Product Owner re-scope lộ trình (2026-08-15). Android (EP-16) chuyển từ ngoài phạm vi thành **Phase 3**; lớp phân tích (EP-20/EP-21) lùi xuống **Phase 4**; mục tiêu go-live phủ iOS + Android + AI. Tài liệu BA đã cập nhật: `brd.md` §1/§5/§7, `epic-map.md` (EP-16/EP-20/EP-21), `phase-proposal.md` (thêm mục Phase 3 Android, đổi tên Phase 4), `requirement.md` §1/§2, `change-log.md` (2026-08-15).
+Cần SA: khi mở thiết kế **Phase 3**, đánh giá lại quyết định `north-star.md` §6 (Phase 1 chốt KHÔNG thêm lớp trừu tượng Android). Android cần một lớp cho điều khiển thiết bị, tìm phần tử và cài build đặc thù. **Không tác động thiết kế Phase 2** (AI không đổi). Mục theo dõi cho Phase 3, không chặn Phase 2.
+SA đã xác nhận (2026-08-18): tác động Phase 2 = không. Guardrail đã cài: lớp AI (AI Client + adapter + healing) không nhúng đặc thù iOS, chỉ page-source-vào/locator-ra; đặc thù iOS giữ ở module `locator` (ADR-022 §Hệ quả). Android vào Phase 3 thêm adapter ở `device`/`locator`, không đụng lớp AI. Mục vẫn mở như theo dõi Phase 3.
+
+### CẦN BA + TEAM-LEAD LÀM: Khởi động US-5.2 — *đã xử lý: US-5.2 merged (`612d62b`, PR #23), Phase 1 hoàn tất 100%* — chốt app thí điểm (AUT) và chuỗi requirement → `.feature` → chạy thật
 Bối cảnh: Phase 1 ~94% (16/17 US), chỉ còn US-5.2 (TICKET-026) — lần chứng minh nền tảng chạy đầu-cuối thật trên simulator, và là **thước đo** cho phần AI Phase 2 (kịch bản người viết chạy được là chuẩn để so kịch bản AI sinh). Không có app thật/requirement/QC nội bộ nên dùng app demo nguồn mở làm AUT và tự dựng đầu vào nghiệp vụ.
 
 **AUT đã research (SA):** [saucelabs/my-demo-app-ios](https://github.com/saucelabs/my-demo-app-ios) (active) — có build simulator tải sẵn `SauceLabs-Demo-App.Simulator.zip` (release 2.2.2): giải nén → `.app` → `app.config.ts.buildPath`, `deviceType: 'simulator'`. (Bản `my-demo-app-rn` cũ đã archived 05/2024, không dùng.)
@@ -36,6 +97,15 @@ Bối cảnh: Phase 1 ~94% (16/17 US), chỉ còn US-5.2 (TICKET-026) — lần 
 **Nghiệm thu US-5.2:** một case đạt + một case hỏng chạy được trên simulator, sinh báo cáo mở xem được; lượt chạy này chốt làm **baseline known-good** để sau này đo hiệu quả AI. Chốt AUT cụ thể là quyết định kỹ thuật của đội.
 
 ## Đã xử lý
+
+### CẦN TEAM-LEAD LÀM: tiếp nhận thiết kế Phase 2 (hướng B) để chẻ ticket — *đã xử lý (Team Lead, 2026-08-20)*
+PO đã duyệt gói thiết kế Phase 2 hướng B; SA đã reconcile (ADR-024/025/026 Accepted, north-star/change-log cập nhật). Team Lead đã chẻ ticket: **3 epic → 11 user story → 17 ticket** (TICKET-028→044) ở `docs/tickets/phase-2/` (11 tệp `us-*.md` + `board.md`), phủ US-201..210 (BA), Phương án A lát mỏng theo module. Bám ADR-024 (heal_event + status hai giá trị), ADR-025 (subprocess `claude -p` + `CodeAgent`), ADR-026 (token env + setup/doctor) và `docs/architecture/phase-2/`. Nền tảng KHÔNG tích hợp git/PR (con người mở PR). Residual `Locator` type đẩy về SA đã giải (ADR-027, PA1). Phụ thuộc BA (bỏ auto-PR) đã xong. **PO đã duyệt board Phase 2 (2026-08-20)** — Giai đoạn N đóng; sẵn sàng cho Dev (bắt đầu US-6.1 + US-7.1).
+
+### CẦN SA ĐÁNH GIÁ: Re-scope Phase 2 — đa nhà cung cấp AI + giao diện cục bộ — *đã đánh giá*
+SA đã đánh giá cùng Product Owner (2026-08-18), ghi thành ADR (Proposed, chờ PO duyệt): **ADR-021** (giao diện web cục bộ khởi chạy theo yêu cầu — bác desktop app/TUI), **ADR-022** (lớp đa nhà cung cấp AI ports-and-adapters, adapter tự viết sau AI Client, thay ADR-005; token từ `usage`), **ADR-023** (`data/config.db` riêng cho danh sách nhà cung cấp + khóa, thay phần khóa-toàn-cục ADR-009). Giả định "chạy cục bộ, KHÔNG server từ xa" xác nhận: giao diện là web localhost sống-ngắn, không daemon. Việc còn lại theo dõi ở mục "CẦN PRODUCT OWNER DUYỆT" phần Đang mở.
+
+### CẦN SA ĐÁNH GIÁ: Mô hình dữ liệu "lần tự phục hồi" (Phase 2, phần tự phục hồi) — *đã đánh giá*
+SA đã đánh giá (2026-08-18), ghi thành **ADR-024** (Proposed): trục trạng thái test case tách còn kết luận `{passed, failed}` (BR-204); "đạt kèm tự phục hồi / AI healed" là **nhãn dẫn xuất** từ sự tồn tại của thực thể mới `heal_event`, không phải giá trị trạng thái — nên ca "hỏng + có tự phục hồi" (mà ba giá trị cũ không chứa) biểu diễn được. `heal_event` append-only bất biến (BR-207); trạng thái rà soát sống ở pull request (git), không cột khả biến. Đầu vào AI healing = locator + màn hình + page source (đủ theo cơ chế ADR-022); kiểu `Locator` giữ co giãn thêm mô tả tùy chọn về sau (mục `srs.md` §3). Trục status Phase 1 (ADR-003/004/020) đổi cách biểu diễn — ghi ở ADR-024 §Hệ quả + mục BA phần Đang mở.
 
 ### CẦN SA LÀM RÕ: Phân loại lỗi ADR-016 bị vô hiệu dưới @wdio/cucumber-framework — *đã xử lý*
 Chẩn đoán xác nhận trong source: `@wdio/cucumber-framework` (index.js:128) truyền `afterStep` **chuỗi** `world.result.message`, không phải object → `AppFailure.kind` (ADR-016) không sống sót, mọi assertion rơi `step_not_executed`. **Chốt (SA):** mang `kind='assertion'` qua ranh giới Cucumber bằng một **sentinel ổn định trong message** — `assertExpectation` (`shared/assertion.ts`) gắn sentinel; `failure-classifier` nhận diện → `wrong_conclusion` và cắt sentinel để `error_message` giữ nguyên (FR-EXEC-10). Ghi vào ADR-016 §Hệ quả. **Việc Dev (2 file):** (1) `shared/assertion.ts` gắn tiền tố sentinel; (2) `evidence/failure-classifier.ts` nhận diện + cắt sentinel (giữ nhánh `isAppFailure && kind==='assertion'` cho đường trong tiến trình). Không chặn nghiệm thu US-5.2.
