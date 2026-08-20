@@ -60,9 +60,26 @@ export interface StepLog {
   screenshot_path: string | null;
 }
 
+/**
+ * One self-healing occurrence — a child of test_case_result (erd.md heal_event), append-only and
+ * immutable (BR-207). It carries no app_id/run_id; a run's heal events are read via a join.
+ * screenshot_path is null when the element screenshot could not be captured (auxiliary evidence).
+ */
+export interface HealEvent {
+  id: string;
+  test_case_result_id: string;
+  step_order: number;
+  screen: string;
+  expected_locator: string;
+  used_locator: string;
+  screenshot_path: string | null;
+  occurred_at: string;
+}
+
 /** Full result model of one run, assembled for the Reporter (interface-spec.md, Result Store). */
 export interface RunModel {
   run: Run;
   results: TestCaseResult[];
   steps: StepLog[];
+  heals: HealEvent[];
 }
