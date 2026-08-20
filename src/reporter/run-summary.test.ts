@@ -23,21 +23,24 @@ function model(overrides: Partial<ReportModel> = {}): ReportModel {
       scope_criteria: null,
       not_run_count: 0,
       stop_reason: null,
-      totals: { total: 3, passed: 2, failed: 1, passed_healed: 0 },
+      totals: { total: 3, passed: 2, failed: 1, healed: 0 },
     },
     features: [
       {
         test_feature: 'Authentication',
-        test_cases: [{ test_case: 'Log in with a valid account', status: 'passed', duration_ms: 6000 }],
+        test_cases: [
+          { test_case: 'Log in with a valid account', status: 'passed', healed: false, duration_ms: 6000 },
+        ],
       },
       {
         test_feature: 'Cart',
         test_cases: [
-          { test_case: 'Add a product to the cart', status: 'passed', duration_ms: 9000 },
-          { test_case: 'The cart count is wrongly expected to be two', status: 'failed', duration_ms: 12000 },
+          { test_case: 'Add a product to the cart', status: 'passed', healed: false, duration_ms: 9000 },
+          { test_case: 'The cart count is wrongly expected to be two', status: 'failed', healed: false, duration_ms: 12000 },
         ],
       },
     ],
+    heals: [],
     failures: [],
     ...overrides,
   };
@@ -68,9 +71,27 @@ describe('formatRunSummary', () => {
     expect(text).toContain('Total: 3 test cases  →  2 passed, 1 failed');
   });
 
+  it('labels a healed test case with ↻ HEAL and counts it', () => {
+    const healedModel = model({
+      context: { ...model().context, totals: { total: 1, passed: 1, failed: 0, healed: 1 } },
+      features: [
+        {
+          test_feature: 'Cart',
+          test_cases: [
+            { test_case: 'Add a product to the cart', status: 'passed', healed: true, duration_ms: 9000 },
+          ],
+        },
+      ],
+    });
+
+    const text = formatRunSummary(toRunSummary(healedModel)).join('\n');
+    expect(text).toContain('↻ HEAL  Add a product to the cart');
+    expect(text).toContain('1 healed');
+  });
+
   it('handles a run where nothing matched', () => {
     const empty = toRunSummary(
-      model({ features: [], context: { ...model().context, totals: { total: 0, passed: 0, failed: 0, passed_healed: 0 } } }),
+      model({ features: [], context: { ...model().context, totals: { total: 0, passed: 0, failed: 0, healed: 0 } } }),
     );
     expect(formatRunSummary(empty).join('\n')).toContain('No test cases were run.');
   });

@@ -10,6 +10,8 @@ import type { ReportModel } from './report-model.js';
 export interface RunSummaryCase {
   test_case: string;
   status: TestCaseStatus;
+  /** Passed with self-healing — derived from heal_event, not a status (ADR-024). */
+  healed: boolean;
 }
 
 export interface RunSummaryFeature {
@@ -17,7 +19,7 @@ export interface RunSummaryFeature {
   test_cases: RunSummaryCase[];
   passed: number;
   failed: number;
-  passed_healed: number;
+  healed: number;
 }
 
 export interface RunSummary {
@@ -27,7 +29,7 @@ export interface RunSummary {
   total: number;
   passed: number;
   failed: number;
-  passed_healed: number;
+  healed: number;
 }
 
 /** Repackage a ReportModel into the compact per-feature summary. */
@@ -35,18 +37,22 @@ export function toRunSummary(model: ReportModel): RunSummary {
   const features: RunSummaryFeature[] = model.features.map((feature) => {
     let passed = 0;
     let failed = 0;
-    let passed_healed = 0;
+    let healed = 0;
     for (const testCase of feature.test_cases) {
       if (testCase.status === 'failed') failed += 1;
-      else if (testCase.status === 'passed_healed') passed_healed += 1;
       else passed += 1;
+      if (testCase.healed) healed += 1;
     }
     return {
       test_feature: feature.test_feature,
-      test_cases: feature.test_cases.map((tc) => ({ test_case: tc.test_case, status: tc.status })),
+      test_cases: feature.test_cases.map((tc) => ({
+        test_case: tc.test_case,
+        status: tc.status,
+        healed: tc.healed,
+      })),
       passed,
       failed,
-      passed_healed,
+      healed,
     };
   });
 
@@ -58,15 +64,15 @@ export function toRunSummary(model: ReportModel): RunSummary {
     total: totals.total,
     passed: totals.passed,
     failed: totals.failed,
-    passed_healed: totals.passed_healed,
+    healed: totals.healed,
   };
 }
 
 const RULE = '─'.repeat(64);
 
-function statusLabel(status: TestCaseStatus): string {
-  if (status === 'failed') return '✗ FAIL';
-  if (status === 'passed_healed') return '↻ HEAL';
+function statusLabel(testCase: RunSummaryCase): string {
+  if (testCase.status === 'failed') return '✗ FAIL';
+  if (testCase.healed) return '↻ HEAL';
   return '✓ PASS';
 }
 
@@ -92,14 +98,14 @@ export function formatRunSummary(summary: RunSummary): string[] {
     const n = feature.test_cases.length;
     lines.push(` Feature: ${feature.test_feature}   (${n} test case${plural(n)})`);
     for (const testCase of feature.test_cases) {
-      lines.push(`   ${statusLabel(testCase.status)}  ${testCase.test_case}`);
+      lines.push(`   ${statusLabel(testCase)}  ${testCase.test_case}`);
     }
-    lines.push(`   → ${counts(feature.passed, feature.failed, feature.passed_healed)}`);
+    lines.push(`   → ${counts(feature.passed, feature.failed, feature.healed)}`);
     lines.push('');
   }
 
   lines.push(
-    ` Total: ${summary.total} test case${plural(summary.total)}  →  ${counts(summary.passed, summary.failed, summary.passed_healed)}`,
+    ` Total: ${summary.total} test case${plural(summary.total)}  →  ${counts(summary.passed, summary.failed, summary.healed)}`,
   );
   lines.push(RULE);
   return lines;

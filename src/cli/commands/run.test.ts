@@ -119,7 +119,7 @@ describe('executeRun', () => {
           total: 0,
           passed: 0,
           failed: 0,
-          passed_healed: 0,
+          healed: 0,
         }),
         outputDir: '/out',
         print: (line) => lines.push(line),
@@ -136,18 +136,18 @@ describe('executeRun', () => {
         {
           test_feature: 'Cart',
           test_cases: [
-            { test_case: 'Add a product to the cart', status: 'passed' },
-            { test_case: 'Cart count wrongly two', status: 'failed' },
+            { test_case: 'Add a product to the cart', status: 'passed', healed: false },
+            { test_case: 'Cart count wrongly two', status: 'failed', healed: false },
           ],
           passed: 1,
           failed: 1,
-          passed_healed: 0,
+          healed: 0,
         },
       ],
       total: 2,
       passed: 1,
       failed: 1,
-      passed_healed: 0,
+      healed: 0,
     });
     const { deps: d, lines } = deps({ summarize });
 
