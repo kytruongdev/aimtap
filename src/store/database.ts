@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { migration001 } from './migrations/001-initial.js';
+import { migration002 } from './migrations/002-heal-event.js';
 
 // Single SQLite results database for every app: data/database.db, WAL mode, append-only. Every row
 // carries its own app_id, so one shared store holds all apps' run history. It lives under data/
@@ -15,7 +16,7 @@ export interface Migration {
   up(db: Db): void;
 }
 
-const migrations: Migration[] = [migration001];
+const migrations: Migration[] = [migration001, migration002];
 
 function defaultDataDir(): string {
   return path.join(process.cwd(), 'data');
