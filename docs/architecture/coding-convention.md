@@ -56,7 +56,7 @@ Quy ước áp dụng cho toàn bộ kho mã: nền tảng, Page Object, phần 
 
 ### Kiểu dữ liệu và kiểm tra đầu vào
 - Chế độ kiểm tra kiểu nghiêm ngặt của TypeScript luôn bật. Không dùng `any` cho dữ liệu đến từ bên ngoài. — *thêm bởi: SA*
-- Mọi dữ liệu vào nền tảng từ bên ngoài (khai báo ứng dụng, biến môi trường, dữ liệu kiểm thử, phản hồi của Claude) đi qua một schema Zod trước khi được dùng. Kiểu TypeScript của dữ liệu đó suy ra từ schema, không khai báo song song. — *thêm bởi: SA*
+- Mọi dữ liệu vào nền tảng từ bên ngoài (khai báo ứng dụng, biến môi trường, dữ liệu kiểm thử, phản hồi của AI CLI) đi qua một schema Zod trước khi được dùng. Kiểu TypeScript của dữ liệu đó suy ra từ schema, không khai báo song song. — *thêm bởi: SA*
 - Schema đặt cùng module chịu trách nhiệm về dữ liệu đó, không gom vào một thư mục schema chung. — *thêm bởi: SA*
 
 ### Xử lý lỗi
@@ -86,11 +86,11 @@ Quy ước áp dụng cho toàn bộ kho mã: nền tảng, Page Object, phần 
 - Thay đổi schema thực hiện bằng một tệp migration có đánh số trong `src/store/migrations/`, không sửa migration đã phát hành. — *thêm bởi: SA*
 - Ghi kết quả của mỗi test case ngay khi test case kết thúc, theo một giao dịch. — *thêm bởi: SA*
 
-### Gọi Claude API
-- Mọi lời gọi Claude đi qua Claude Client; không module nào khác gọi trực tiếp SDK hay HTTP endpoint của Claude. — *thêm bởi: SA*
-- Nội dung yêu cầu gửi tới mô hình đặt trong `src/ai/prompts/`, tách khỏi mã gọi. — *thêm bởi: SA*
+### Gọi AI (qua AI CLI ngoài)
+- Mọi lời gọi AI đi qua AI Gateway (port `CodeAgent`, `src/ai/`); không module nào khác gọi trực tiếp AI CLI. AI Gateway gọi một AI CLI ngoài (Claude Code) qua subprocess `claude -p` (ADR-025). — *thêm bởi: SA*
+- Nội dung prompt gửi tới AI CLI đặt trong `src/ai/prompts/`, tách khỏi mã gọi. — *thêm bởi: SA*
 - Script Generator gửi kèm danh sách step definition hiện có trong mọi lần sinh test case, và ưu tiên dùng lại step đã có trước khi sinh step mới. — *thêm bởi: SA*
-- Phía gọi luôn xử lý được trường hợp Claude không khả dụng (bị tắt bằng cấu hình, mất mạng, hết thời gian chờ, vượt hạn mức) mà không làm hỏng lượt chạy. — *thêm bởi: SA*
+- Đầu ra AI CLI đi qua schema Zod trước khi dùng; phía gọi luôn xử lý được trường hợp AI không khả dụng (tắt bằng cấu hình, thiếu CLI/token, mất mạng, hết thời gian chờ, vượt hạn mức) mà không làm hỏng lượt chạy — AI Gateway trả `null`, không ném (ADR-025, BR-208). — *thêm bởi: SA*
 
 ---
 

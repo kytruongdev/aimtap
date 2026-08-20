@@ -11,7 +11,7 @@ flowchart TB
     subgraph external[Bên ngoài nền tảng]
         qc[QC]
         device[Thiết bị thật / Simulator iOS]
-        claudeapi[Claude API]
+        aicli[AI CLI ngoài - Claude Code]
         jira[Jira]
     end
 
@@ -31,8 +31,7 @@ flowchart TB
         store[(Result Store - SQLite)]
         reporter[Reporter]
         cfg[Config & Secrets]
-        claude[Claude Client - Phase 2]
-        gen[Script Generator - Phase 2]
+        aigw[AI Gateway - Phase 2]
         analytics[Analytics - Phase 3]
     end
 
@@ -51,11 +50,10 @@ flowchart TB
     evidence --> reporter
     reporter -->|HTML| qc
     qc -->|đính thủ công| jira
-    cfg --> claude
-    resolver -.self-healing, Phase 2.-> claude
-    gen --> claude
-    claude --> claudeapi
-    gen -.mô tả hành vi và cài đặt đề xuất.-> features
+    cfg --> aigw
+    resolver -.tự phục hồi, Phase 2.-> aigw
+    aigw -->|subprocess claude -p| aicli
+    aigw -.tệp nháp test case, Phase 2.-> features
     store --> analytics
     analytics --> qc
 ```
@@ -76,10 +74,9 @@ Diagram này được cập nhật mỗi khi một quyết định kiến trúc 
 | Evidence Collector | Dựng bằng chứng thực thi của mỗi test case: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng. | ghi tệp ảnh, đẩy bản ghi sang Result Store | Result Store, Shared | 1 |
 | Result Store | Lưu bản ghi kết quả có cấu trúc của mỗi lượt chạy và mỗi test case trên máy QC. | ghi/đọc SQLite cục bộ | better-sqlite3, Shared | 1 |
 | Reporter | Sinh báo cáo của một lượt chạy dạng một tệp HTML tự chứa (đính thủ công). | đọc Result Store và tệp ảnh | Result Store, Shared | 1 |
-| Config & Secrets | Cung cấp cấu hình vận hành của nền tảng, nạp khóa API và dữ liệu kiểm thử từ nguồn ngoài kho mã. | đọc biến môi trường, tệp cấu hình cục bộ | Shared | 1 |
+| Config & Secrets | Cung cấp cấu hình vận hành của nền tảng, nạp bí mật (Phase 2: token AI CLI) và dữ liệu kiểm thử từ nguồn ngoài kho mã. | đọc biến môi trường, tệp cấu hình cục bộ | Shared | 1 |
 | Shared | Cung cấp hạ tầng dùng chung cho mọi module: ghi log có cấu trúc, phân cấp lớp lỗi, tham số thời gian chờ, kiểu dữ liệu chung. | — | — | 1 |
-| Claude Client | Điểm duy nhất của nền tảng gọi Claude API: quản lý khóa, chọn mô hình, giới hạn số lần gọi, và tắt hoàn toàn bằng cấu hình. | đọc Config & Secrets | Config & Secrets, Shared | 2 |
-| Script Generator | Sinh phần mô tả hành vi và phần cài đặt còn thiếu từ mô tả của QC và page source của màn hình đích, dựa trên danh sách step definition hiện có. | đọc step definition hiện có, ghi tệp nháp | Claude Client, Shared | 2 |
+| AI Gateway | Điểm duy nhất của nền tảng gọi AI, cho **tự phục hồi locator** và **sinh test case**: gọi một AI CLI ngoài (Claude Code) qua subprocess; đặt công tắc bật/tắt theo app, giới hạn số lần gọi, và thời gian chờ tối đa mỗi lần gọi; đánh dấu test case do AI sinh. | đọc Config & Secrets và step definition hiện có; ghi tệp nháp | Config & Secrets, Shared, kiểu Locator | 2 |
 | Analytics | Trả lời câu hỏi về xu hướng chất lượng từ dữ liệu kết quả đã tích lũy. | đọc Result Store | Result Store, Shared | 3 |
 
 Nội dung test của một ứng dụng gồm hai phần: **mô tả hành vi** bằng ngôn ngữ tự nhiên (tệp `.feature`, mỗi tệp là một **test feature** chứa nhiều **test case**) và **cài đặt thực thi** từng câu mô tả (step definition). Cả hai phần, cùng khai báo ứng dụng và Page Object, nằm trong cùng kho mã nhưng ngoài ranh giới nền tảng. Nền tảng không tham chiếu tới bất kỳ định danh, màn hình, hay luồng nghiệp vụ nào của một ứng dụng cụ thể; quan hệ đi một chiều từ nội dung ứng dụng tới nền tảng.
@@ -127,7 +124,7 @@ aimtap/
 │   │
 │   ├── locator/                          # Locator Resolver
 │   │   ├── locator-resolver.ts           # điểm chèn duy nhất khi tìm phần tử (ADR-004)
-│   │   ├── locator.ts                    # kiểu Locator và các chiến lược tìm kiếm của iOS
+│   │   ├── locator.ts                    # bộ dựng locator iOS, toSelector, describeLocator (kiểu Locator re-export từ shared, ADR-027)
 │   │   └── index.ts
 │   │
 │   ├── evidence/                         # Evidence Collector
@@ -162,15 +159,15 @@ aimtap/
 │   │   ├── logger.ts                     # log có cấu trúc, gắn run-id vào mọi dòng
 │   │   ├── errors.ts                     # AppFailure và PlatformFailure — hai nhánh lỗi của hệ thống
 │   │   ├── wait-policy.ts                # tham số thời gian chờ tập trung + withRetries, dùng chung find và probe (ADR-015)
+│   │   ├── locator-types.ts              # kiểu Locator + enum chiến lược — kernel dùng chung ai/locator (ADR-027)
 │   │   └── types.ts
 │   │
-│   ├── ai/                                                          # [Phase 2]
-│   │   ├── claude-client.ts              # điểm duy nhất gọi Claude API (ADR-005)
-│   │   ├── prompts/                      # nội dung yêu cầu gửi tới mô hình, tách khỏi mã gọi
-│   │   ├── healing/locator-healer.ts     # tìm lại locator hỏng
-│   │   ├── generation/
-│   │   │   ├── step-catalog.ts           # thu thập step definition hiện có làm đầu vào cho việc sinh
-│   │   │   └── script-generator.ts       # sinh mô tả hành vi và cài đặt còn thiếu
+│   ├── ai/                                                          # [Phase 2] AI Gateway
+│   │   ├── code-agent.ts                 # port CodeAgent: gọi AI CLI ngoài qua subprocess (ADR-025)
+│   │   ├── adapters/claude-code.ts       # adapter subprocess `claude -p --output-format json`
+│   │   ├── prompts/                      # nội dung prompt (heal, generate), tách khỏi mã gọi
+│   │   ├── heal-invoker.ts               # chế độ read-only: trả một chuỗi locator
+│   │   ├── generate-invoker.ts           # Script Generator: sinh tệp nháp test case (kèm step hiện có, ADR-007) + đánh dấu do AI sinh
 │   │   └── index.ts
 │   │
 │   ├── analytics/                                                   # [Phase 3]
@@ -238,7 +235,7 @@ Thêm một ứng dụng vào nền tảng là thêm một thư mục dưới `a
 Các nguyên tắc dưới đây áp dụng cho mọi module; lập luận và nguồn tham chiếu ở [ADR-008](adr/adr-008.md).
 
 **Phát hiện sai sót sớm**
-- Mọi dữ liệu vào nền tảng từ bên ngoài (khai báo ứng dụng, biến môi trường, dữ liệu kiểm thử, phản hồi của Claude) đi qua một schema kiểm tra tại thời điểm chạy trước khi được dùng. Schema là nguồn duy nhất sinh ra cả kiểu dữ liệu lẫn phép kiểm tra.
+- Mọi dữ liệu vào nền tảng từ bên ngoài (khai báo ứng dụng, biến môi trường, dữ liệu kiểm thử, phản hồi của AI CLI) đi qua một schema kiểm tra tại thời điểm chạy trước khi được dùng. Schema là nguồn duy nhất sinh ra cả kiểu dữ liệu lẫn phép kiểm tra.
 - Điều kiện môi trường (Node, Xcode, Appium, thiết bị khả dụng, bản build tồn tại) được kiểm tra trước khi mở phiên Appium. Mọi mục dữ liệu kiểm thử trong tệp mẫu được kiểm tra đã có giá trị ở cùng bước này (ADR-009). Lượt chạy dừng ở bước này kèm thông báo nêu rõ thiếu gì, thay vì hỏng ở giữa.
 - Câu mô tả hành vi chưa có step definition tương ứng làm lượt chạy dừng kèm danh sách câu thiếu, không bị bỏ qua im lặng.
 
@@ -296,7 +293,7 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Tổ chức kho mã: nền tảng và nội dung của từng ứng dụng tách bằng ranh giới thư mục và quy tắc phụ thuộc một chiều. | [ADR-002](adr/adr-002.md) |
 | Lưu trữ dữ liệu kết quả trên máy QC (một store chung `data/database.db`). | [ADR-003](adr/adr-003.md) → [ADR-020](adr/adr-020.md) |
 | Điểm đặt lớp self-healing. | [ADR-004](adr/adr-004.md) |
-| Cách tích hợp Claude API qua một client dùng chung. | [ADR-005](adr/adr-005.md) |
+| Cách nền tảng gọi AI: subprocess một AI CLI ngoài (Claude Code) qua cổng dùng chung. | [ADR-005](adr/adr-005.md) → [ADR-025](adr/adr-025.md) |
 | Cách sinh báo cáo (nền tảng tự sinh một tệp từ dữ liệu đã lưu). | [ADR-006](adr/adr-006.md) |
 | Cấu trúc test case và nguồn của biểu diễn bằng ngôn ngữ tự nhiên. | [ADR-007](adr/adr-007.md) |
 | Thư viện nền, công cụ chạy, và cách đồng bộ môi trường máy QC. | [ADR-008](adr/adr-008.md) |
@@ -307,6 +304,9 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Mô hình thực thi Test Runner trên WebdriverIO/Cucumber. | [ADR-013](adr/adr-013.md) |
 | Locator Resolver không phụ thuộc Test Runner; phá chu trình bằng sink tiêm và phiên WebdriverIO toàn cục. | [ADR-014](adr/adr-014.md) |
 | wait-policy là hạ tầng Shared, dùng chung cho tìm phần tử và probe thiết bị. | [ADR-015](adr/adr-015.md) |
+| Mô hình dữ liệu tự phục hồi: thực thể lần tự phục hồi, kết luận passed/failed + nhãn dẫn xuất. | [ADR-024](adr/adr-024.md) |
+| Xác thực AI CLI bằng token thuê bao trong env; bước setup và doctor. | [ADR-026](adr/adr-026.md) |
+| Kiểu `Locator` là kiểu kernel ở `shared` (dùng chung `ai`/`locator`). | [ADR-027](adr/adr-027.md) |
 
 ---
 
@@ -328,6 +328,7 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Cưỡng chế ranh giới module | ESLint + `eslint-plugin-boundaries` | [eslint-plugin-boundaries](https://www.jsboundaries.dev/) | ADR-008 |
 | Lệnh vận hành | `Makefile` | — | ADR-008 |
 | Khung lệnh CLI | commander (v15, ESM-only, zero-dependency) | [commander — npm](https://www.npmjs.com/package/commander) | ADR-017 |
+| Gọi AI | AI CLI ngoài (Claude Code) qua subprocess headless `claude -p` | [Claude Code — headless](https://code.claude.com/docs/en/headless) | ADR-025, ADR-026 |
 | Lấy locator | Appium Inspector (công cụ ngoài, QC dùng thủ công) | BRD §6 | — |
 
 ---
@@ -341,9 +342,9 @@ Mã NFR-01 đến NFR-09 theo `brd.md` §9. NFR-10 đến NFR-12 chỉ có ở `
 | NFR-01 — chạy nội bộ, không máy chủ | Toàn bộ nền tảng là một dự án Node.js chạy bằng dòng lệnh trên máy QC. Không có tiến trình thường trú, không có cổng mạng mở ngoài Appium server cục bộ, không container hóa. | BC-02. |
 | NFR-02 — iOS trên macOS | Ràng buộc của XCUITest driver. `environment-check.ts` kiểm tra điều kiện môi trường ở bước khởi động lượt chạy và dừng sớm kèm thông báo nếu thiếu. | BC-01. Cũng là lý do nền tảng không chạy trong container (§2.3). |
 | NFR-03 — kết quả lặp lại, không phụ thuộc thứ tự chạy | Mỗi test case tự đưa ứng dụng về trạng thái nó cần ở bước mở đầu. Mỗi bản ghi lượt chạy lưu định danh bản build và định danh thiết bị để đối chiếu về sau. Phân tách `AppFailure` và `PlatformFailure` giữ cho SM-03 không bị lẫn lỗi môi trường. Phiên bản Node và thư viện cố định giữa các máy QC (§2.3). | BC-03, BC-06. Tính lặp lại phụ thuộc vào việc trạng thái ứng dụng đặt lại được bằng thao tác trong test case. |
-| NFR-04 — khóa API ngoài kho mã | Khóa nạp qua biến môi trường từ `.env.local` không được Git theo dõi. Giá trị bí mật bị che ở tầng ghi log, nên không lọt vào log, bản ghi kết quả, hay báo cáo. | Không dùng dịch vụ quản lý bí mật; ràng buộc chạy cục bộ không đòi hỏi mức đó. |
-| NFR-05 — kiểm soát độ trễ và chi phí Claude | Mọi lệnh gọi đi qua Claude Client, nơi đặt công tắc bật/tắt toàn cục, hạn mức số lần gọi trên một lượt chạy, và thời gian chờ tối đa cho mỗi lần gọi. Khi tắt, nền tảng chạy đúng như Phase 1. | BC-04. |
-| NFR-06 — quyền kết luận thuộc con người | Nền tảng không tự thay đổi phần mô tả hành vi, step definition hay Page Object trên nhánh chính. Đầu ra của Claude luôn là đề xuất ở dạng tệp nháp hoặc mục cảnh báo trong báo cáo. Test case có tự phục hồi mang trạng thái riêng, không gộp vào "đạt". | BC-08. |
+| NFR-04 — bí mật ngoài kho mã | Bí mật nạp qua biến môi trường từ file env không được Git theo dõi (Phase 2: token AI CLI, ADR-026). Giá trị bí mật bị che ở tầng ghi log, nên không lọt vào log, bản ghi kết quả, hay báo cáo. | Không dùng dịch vụ quản lý bí mật; ràng buộc chạy cục bộ không đòi hỏi mức đó. |
+| NFR-05 — kiểm soát độ trễ và chi phí AI | Mọi lệnh gọi đi qua AI Gateway, nơi đặt công tắc bật/tắt theo app, hạn mức số lần gọi trên một lượt chạy, và thời gian chờ tối đa cho mỗi lần gọi. Dùng AI CLI ngoài theo thuê bao (ADR-026) thay khóa API tính per-token. Khi tắt, nền tảng chạy đúng như Phase 1. | BC-04. |
+| NFR-06 — quyền kết luận thuộc con người | Nền tảng không tự thay đổi phần mô tả hành vi, step definition hay Page Object trên nhánh chính, và không tự tạo pull request. Đầu ra của AI CLI luôn là đề xuất: locator dùng tạm lúc chạy, hoặc tệp nháp; con người áp và mở pull request sau rà soát. Test case có tự phục hồi mang nhãn dẫn xuất, kết luận đạt/hỏng độc lập với tự phục hồi (ADR-024). | BC-08. |
 | NFR-07 — nền tảng không chứa tri thức ứng dụng | Quy tắc phụ thuộc một chiều giữa `src/` và `apps/`, cưỡng chế bằng lint (§2.1, ADR-002); thêm một ứng dụng là thêm một thư mục khai báo, không sửa mã nền tảng. | EP-24, EP-25. |
 | NFR-08 — QC không cần đọc/viết phần cài đặt từ Phase 2 | Phần mô tả hành vi tồn tại thành tệp riêng, đọc được ở trạng thái tĩnh; đưa nó tới QC không đòi hỏi một chức năng hiển thị riêng (ADR-007). | Phụ thuộc vào kỷ luật viết step ở mức nghiệp vụ. |
 | NFR-09 — mô tả hành vi luôn khớp hành vi được thực thi | Phần mô tả hành vi chính là thứ được thực thi, nên hai bên không tách rời được (ADR-007). Mọi lựa chọn thiết kế về sau cho việc soạn và hiển thị test case chịu ràng buộc này. | Yêu cầu ở mức nghiệp vụ, không phụ thuộc vào lựa chọn công cụ hiện tại. |
@@ -364,7 +365,8 @@ Mã NFR-01 đến NFR-09 theo `brd.md` §9. NFR-10 đến NFR-12 chỉ có ở `
 | Giao diện web cho nền tảng | Khi thao tác dòng lệnh trở thành rào cản thực tế với QC, đo được qua số lần cần hỗ trợ. |
 | Chạy song song nhiều thiết bị trong một lượt chạy | Khi thời gian một vòng hồi quy (SM-02) vượt ngưỡng chấp nhận được của QC. |
 | Công cụ rà soát trùng lặp step definition | Khi số step definition tăng nhanh hơn số test case, hoặc khi lỗi khớp mơ hồ xuất hiện lặp lại. |
-| Kho locator lịch sử phục vụ self-healing không cần gọi mô hình | Khi chi phí hoặc độ trễ gọi Claude lúc chạy vượt ngưỡng chấp nhận được, đo qua SM-05 và số lần gọi thực tế. |
+| Kho locator lịch sử phục vụ self-healing không cần gọi mô hình | Khi chi phí hoặc độ trễ gọi AI CLI lúc chạy vượt ngưỡng chấp nhận được, đo qua SM-05 và số lần gọi thực tế. |
+| Thêm AI CLI thứ hai (ví dụ Codex) | Khi đội cần một CLI khác Claude Code; thêm một adapter sau port `CodeAgent` (ADR-025), không đổi phần còn lại. |
 | Chuyển `better-sqlite3` sang module `node:sqlite` có sẵn | Khi phiên bản Node.js chứa `node:sqlite` ở trạng thái ổn định trở thành LTS và được cài trên máy QC. |
 | Tách nền tảng thành package độc lập trong monorepo | Khi nền tảng cần được dùng bởi một đội khác dưới dạng thư viện phát hành, hoặc khi số ứng dụng lớn tới mức một kho mã chung gây trở ngại khi rà soát pull request. |
 | Tích hợp CI/CD, dịch vụ thiết bị trên cloud | Ngoài phạm vi hiện tại; xét lại khi có nhu cầu chạy hồi quy không do QC khởi động thủ công (AS-03). |
