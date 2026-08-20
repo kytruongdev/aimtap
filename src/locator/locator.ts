@@ -1,13 +1,12 @@
-// Locator shapes for XCUITest. Page Objects declare locators with these builders; the resolver
-// translates them into WebdriverIO selectors. Strategy order of preference follows UC-02 3a:
-// accessibility id, then id, then predicate string or class chain.
+// iOS locator builders and selector translation for XCUITest. Page Objects declare locators with
+// these builders; the resolver translates them into WebdriverIO selectors. The Locator type and
+// LocatorStrategy enum now live in the shared kernel (ADR-027); re-exported here for source
+// compatibility. Strategy order of preference follows UC-02 3a: accessibility id, then id, then
+// predicate string or class chain.
 
-export type LocatorStrategy = 'accessibility-id' | 'id' | 'predicate' | 'class-chain';
+import type { Locator, LocatorStrategy } from '../shared/index.js';
 
-export interface Locator {
-  strategy: LocatorStrategy;
-  value: string;
-}
+export type { Locator, LocatorStrategy };
 
 export function byAccessibilityId(value: string): Locator {
   return { strategy: 'accessibility-id', value };
