@@ -25,3 +25,5 @@ data/
 apps/*/test-data.local.json
 # App build artifacts — per-machine binary, not in Git (coding-convention §17)
 apps/*/build/
+
+docs/code-review
