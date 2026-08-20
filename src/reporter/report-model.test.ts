@@ -90,6 +90,7 @@ const sample: RunModel = {
       screenshot_path: '/output/demo/run-1/fail-step-2.png',
     }),
   ],
+  heals: [],
 };
 
 describe('buildReportModel', () => {
@@ -144,6 +145,7 @@ describe('buildReportModel', () => {
         tc({ id: 'r9', test_case: 'flaky', status: 'failed', evidence_missing: 1, error_message: 'boom' }),
       ],
       steps: [step({ id: 's9', test_case_result_id: 'r9', step_order: 1, result: 'failed' })],
+      heals: [],
     };
 
     const failure = buildReportModel('run-1', repo(model)).failures[0];
@@ -156,6 +158,7 @@ describe('buildReportModel', () => {
       run: run({ completion: 'incomplete', not_run_count: 2, stop_reason: 'device_unavailable' }),
       results: [tc({ id: 'r1', test_case: 'one', status: 'passed' })],
       steps: [],
+      heals: [],
     };
 
     const context = buildReportModel('run-1', repo(model)).context;

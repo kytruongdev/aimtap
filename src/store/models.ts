@@ -81,4 +81,5 @@ export interface RunModel {
   run: Run;
   results: TestCaseResult[];
   steps: StepLog[];
+  heals: HealEvent[];
 }

@@ -3,13 +3,34 @@ import Database from 'better-sqlite3';
 import { isPlatformFailure } from '../shared/index.js';
 import { applyMigrations } from './database.js';
 import { createRunRepository, type RunFinalize, type RunStart } from './run-repository.js';
-import { SCHEMA_VERSION, type StepLog, type TestCaseResult } from './models.js';
+import { SCHEMA_VERSION, type HealEvent, type StepLog, type TestCaseResult } from './models.js';
 
 function freshRepo() {
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
   applyMigrations(db);
   return createRunRepository(db);
+}
+
+function freshDbAndRepo() {
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  applyMigrations(db);
+  return { db, repo: createRunRepository(db) };
+}
+
+function makeHeal(overrides: Partial<HealEvent> = {}): HealEvent {
+  return {
+    id: 'h-1',
+    test_case_result_id: 'tc-1',
+    step_order: 2,
+    screen: 'LoginScreen',
+    expected_locator: 'old-locator',
+    used_locator: 'new-locator',
+    screenshot_path: null,
+    occurred_at: '2026-07-24T10:00:02.000Z',
+    ...overrides,
+  };
 }
 
 const runStart: RunStart = {
@@ -164,5 +185,60 @@ describe('run repository', () => {
       expect(isPlatformFailure(error)).toBe(true);
       expect((error as Error).message).toContain('already finalized');
     }
+  });
+});
+
+describe('heal events', () => {
+  it('stores multiple heal events and reads them back for the run', () => {
+    const repo = freshRepo();
+    repo.saveRunStart(runStart);
+    repo.saveTestCaseResult(makeResult(), []);
+    repo.saveHealEvents([
+      makeHeal({ id: 'h-1', step_order: 2, expected_locator: 'a', used_locator: 'b' }),
+      makeHeal({ id: 'h-2', step_order: 4, expected_locator: 'c', used_locator: 'd' }),
+    ]);
+
+    const heals = repo.getRunModel('r1')?.heals ?? [];
+    expect(heals.map((h) => h.id)).toEqual(['h-1', 'h-2']);
+    expect(heals[0]?.expected_locator).toBe('a');
+    expect(heals[0]?.used_locator).toBe('b');
+    expect(heals[1]?.step_order).toBe(4);
+  });
+
+  it('returns heals grouped by test case, including a failed test case with a heal (BR-205)', () => {
+    const repo = freshRepo();
+    repo.saveRunStart(runStart);
+    repo.saveTestCaseResult(makeResult({ id: 'tc-1', status: 'passed' }), []);
+    repo.saveTestCaseResult(
+      makeResult({ id: 'tc-2', status: 'failed', failure_type: 'step_not_executed' }),
+      [],
+    );
+    // Insert out of order to prove getRunModel groups/orders by test_case_result_id.
+    repo.saveHealEvents([makeHeal({ id: 'h-2', test_case_result_id: 'tc-2' })]);
+    repo.saveHealEvents([makeHeal({ id: 'h-1', test_case_result_id: 'tc-1' })]);
+
+    const heals = repo.getRunModel('r1')?.heals ?? [];
+    expect(heals.map((h) => h.test_case_result_id)).toEqual(['tc-1', 'tc-2']);
+    // The failed test case still carries its heal.
+    expect(heals.find((h) => h.test_case_result_id === 'tc-2')?.id).toBe('h-2');
+  });
+
+  it('writes heal events in the same transaction as the test case result', () => {
+    const { db, repo } = freshDbAndRepo();
+    repo.saveRunStart(runStart);
+
+    // A heal with a NOT NULL violation fails; wrapping both calls in one transaction must roll the
+    // test case result back too (this is how the Evidence Collector coordinates the write in US-7.3).
+    const badHeal = makeHeal({ screen: null as unknown as string });
+    const writeBoth = db.transaction(() => {
+      repo.saveTestCaseResult(makeResult(), []);
+      repo.saveHealEvents([badHeal]);
+    });
+
+    expect(() => writeBoth()).toThrow();
+
+    const model = repo.getRunModel('r1');
+    expect(model?.results).toHaveLength(0);
+    expect(model?.heals).toHaveLength(0);
   });
 });

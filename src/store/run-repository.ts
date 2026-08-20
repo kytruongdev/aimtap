@@ -2,6 +2,7 @@ import { PlatformFailure, type DeviceType } from '../shared/index.js';
 import type { Db } from './database.js';
 import type {
   AggregateResult,
+  HealEvent,
   RunCompletion,
   RunModel,
   ScopeKind,
@@ -44,6 +45,7 @@ export interface RunRepository {
   saveRunStart(run: RunStart): void;
   finalizeRun(summary: RunFinalize): void;
   saveTestCaseResult(result: TestCaseResult, steps: StepLog[]): void;
+  saveHealEvents(events: HealEvent[]): void;
   getRunModel(runId: string): RunModel | null;
 }
 
@@ -93,6 +95,16 @@ export function createRunRepository(db: Db): RunRepository {
         @error_message, @screenshot_path)`,
   );
 
+  // heal_event is append-only and immutable (BR-207): insert-only, no update or delete path.
+  const insertHeal = db.prepare(
+    `INSERT INTO heal_event
+       (id, test_case_result_id, step_order, screen, expected_locator, used_locator,
+        screenshot_path, occurred_at)
+     VALUES
+       (@id, @test_case_result_id, @step_order, @screen, @expected_locator, @used_locator,
+        @screenshot_path, @occurred_at)`,
+  );
+
   const selectRun = db.prepare('SELECT * FROM run WHERE run_id = ?');
   const selectResults = db.prepare(
     'SELECT * FROM test_case_result WHERE run_id = ? ORDER BY started_at, id',
@@ -103,11 +115,26 @@ export function createRunRepository(db: Db): RunRepository {
      WHERE t.run_id = ?
      ORDER BY t.id, s.step_order`,
   );
+  // Grouped by test case (ordered by test_case_result_id) so the Reporter builds the "passed with
+  // self-healing" label and heal entries per test case (US-7.4). Includes heals of failed test
+  // cases too, since a heal can precede a later failure (BR-205).
+  const selectHeals = db.prepare(
+    `SELECT h.* FROM heal_event h
+       JOIN test_case_result t ON h.test_case_result_id = t.id
+     WHERE t.run_id = ?
+     ORDER BY t.id, h.step_order, h.occurred_at`,
+  );
 
   // One transaction per test case: the result and all its steps commit together or not at all.
   const saveResultTx = db.transaction((result: TestCaseResult, steps: StepLog[]) => {
     insertResult.run(result);
     for (const step of steps) insertStep.run(step);
+  });
+
+  // Append-only. As a better-sqlite3 transaction it is atomic on its own and nests as a savepoint
+  // when the Evidence Collector (US-7.3) calls it inside the same test-case transaction.
+  const saveHealsTx = db.transaction((events: HealEvent[]) => {
+    for (const event of events) insertHeal.run(event);
   });
 
   return {
@@ -135,12 +162,17 @@ export function createRunRepository(db: Db): RunRepository {
       saveResultTx(result, steps);
     },
 
+    saveHealEvents(events) {
+      saveHealsTx(events);
+    },
+
     getRunModel(runId) {
       const run = selectRun.get(runId) as Run | undefined;
       if (run === undefined) return null;
       const results = selectResults.all(runId) as TestCaseResult[];
       const steps = selectSteps.all(runId) as StepLog[];
-      return { run, results, steps };
+      const heals = selectHeals.all(runId) as HealEvent[];
+      return { run, results, steps, heals };
     },
   };
 }
