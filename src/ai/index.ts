@@ -3,3 +3,6 @@
 // (TICKET-031). Heal/generate content builds on this port in US-7.2 / US-8.1.
 export { createCodeAgent } from './code-agent.js';
 export type { CodeAgent, AgentMode, AgentLimits } from './code-agent.js';
+
+export { healLocator } from './heal-invoker.js';
+export type { HealContext } from './heal-invoker.js';
