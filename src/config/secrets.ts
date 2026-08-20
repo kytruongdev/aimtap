@@ -43,6 +43,26 @@ export function loadApiKey(
   return key === '' ? null : key;
 }
 
+// --- AI CLI token (root .env.local) ------------------------------------------------------------
+
+const CLI_TOKEN_VAR = 'CLAUDE_CODE_OAUTH_TOKEN';
+
+/**
+ * Read the AI CLI OAuth token from the root .env.local (falling back to the ambient environment),
+ * and register it with the log mask. This is the auth path for the external AI CLI in the direction-B
+ * approach (ADR-026); it does not touch ANTHROPIC_API_KEY. Returns null when the token is unset so
+ * the AI features simply stay off (BR-221) rather than failing the run.
+ */
+export function loadCliToken(
+  opts: { rootDir?: string; env?: NodeJS.ProcessEnv } = {},
+): string | null {
+  registerSecretPaths([CLI_TOKEN_VAR]);
+  const fromFile = readEnvFile(path.join(opts.rootDir ?? process.cwd(), '.env.local'));
+  const env = opts.env ?? process.env;
+  const token = (fromFile[CLI_TOKEN_VAR] ?? env[CLI_TOKEN_VAR] ?? '').trim();
+  return token === '' ? null : token;
+}
+
 // --- Per-app test data (apps/<app-id>/test-data.*.json) ----------------------------------------
 
 /** A nested tree of string leaves; an account is a cluster of related fields (ADR-009). */
