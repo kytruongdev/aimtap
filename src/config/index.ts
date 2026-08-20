@@ -9,6 +9,7 @@ export type { PlatformConfig } from './platform-config.js';
 export {
   loadApiKey,
   loadCliToken,
+  upsertEnvVar,
   loadTestData,
   verifyTestDataComplete,
   testDataSchema,

@@ -3,7 +3,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { isPlatformFailure, redactObject } from '../shared/index.js';
-import { loadApiKey, loadCliToken, loadTestData, verifyTestDataComplete } from './secrets.js';
+import {
+  loadApiKey,
+  loadCliToken,
+  upsertEnvVar,
+  loadTestData,
+  verifyTestDataComplete,
+} from './secrets.js';
 
 function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'aimtap-config-'));
@@ -94,6 +100,39 @@ describe('loadCliToken', () => {
     expect(redactObject({ CLAUDE_CODE_OAUTH_TOKEN: 'tok-secret' })).toEqual({
       CLAUDE_CODE_OAUTH_TOKEN: '[REDACTED]',
     });
+  });
+});
+
+describe('upsertEnvVar', () => {
+  it('appends the key when the file does not exist yet', () => {
+    const root = tmpDir();
+    upsertEnvVar('CLAUDE_CODE_OAUTH_TOKEN', 'tok-1', { rootDir: root });
+
+    const content = fs.readFileSync(path.join(root, '.env.local'), 'utf8');
+    expect(content).toBe('CLAUDE_CODE_OAUTH_TOKEN=tok-1\n');
+  });
+
+  it('updates an existing key without touching other keys or comments', () => {
+    const root = tmpDir();
+    fs.writeFileSync(
+      path.join(root, '.env.local'),
+      '# secrets\nANTHROPIC_API_KEY=sk-keep\nCLAUDE_CODE_OAUTH_TOKEN=old\n',
+    );
+
+    upsertEnvVar('CLAUDE_CODE_OAUTH_TOKEN', 'new', { rootDir: root });
+
+    const content = fs.readFileSync(path.join(root, '.env.local'), 'utf8');
+    expect(content).toBe('# secrets\nANTHROPIC_API_KEY=sk-keep\nCLAUDE_CODE_OAUTH_TOKEN=new\n');
+  });
+
+  it('appends a new key while keeping existing ones', () => {
+    const root = tmpDir();
+    fs.writeFileSync(path.join(root, '.env.local'), 'ANTHROPIC_API_KEY=sk-keep\n');
+
+    upsertEnvVar('CLAUDE_CODE_OAUTH_TOKEN', 'tok', { rootDir: root });
+
+    const content = fs.readFileSync(path.join(root, '.env.local'), 'utf8');
+    expect(content).toBe('ANTHROPIC_API_KEY=sk-keep\nCLAUDE_CODE_OAUTH_TOKEN=tok\n');
   });
 });
 
