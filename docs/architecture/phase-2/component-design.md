@@ -35,7 +35,7 @@ Các module Phase 1 giữ nguyên trách nhiệm; dưới đây chỉ mô tả m
 
 ## Evidence Collector (`src/evidence/`) — thêm ghi nhận tự phục hồi
 **Trách nhiệm (thêm):** Nhận sự kiện một lần tự phục hồi từ Locator Resolver, chụp ảnh phần tử đã thao tác (BR-206), và ghi `heal_event` cùng bản ghi test case theo giao dịch của lượt chạy.
-**Cấu trúc bên trong:** mở rộng bộ thu sự kiện hiện có với một lối vào `onHeal(healRecord)`; ảnh phần tử ghi ra tệp, `heal_event` giữ đường dẫn.
+**Cấu trúc bên trong:** mở rộng bộ thu sự kiện hiện có với một lối vào `onHeal(healSignal)`; buffer signal Resolver đẩy (tập con), enrich `stepOrder` tại `onStepEnd` và `testCaseResultId`/`screenshotPath` tại `onScenarioEnd` thành `heal_event`; ảnh phần tử ghi ra tệp, `heal_event` giữ đường dẫn.
 **Phụ thuộc:** Result Store, Shared.
 **Requirement liên quan:** FR-HEAL-02, FR-HEAL-04, FR-HEAL-05, BR-205, BR-206.
 
