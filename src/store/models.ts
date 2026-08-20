@@ -10,7 +10,11 @@ export type RunCompletion = 'completed' | 'incomplete';
 export type AggregateResult = 'passed' | 'failed';
 export type ScopeKind = 'full_suite' | 'subset';
 export type StopReason = 'cancelled_by_qc' | 'device_unavailable';
-export type TestCaseStatus = 'passed' | 'failed' | 'passed_healed';
+// Two-value conclusion (ADR-024, BR-204): the test either passed or failed. "Passed with
+// self-healing" is not a stored status — it is derived at the report layer from the presence of a
+// heal_event for a passed test case. The DB CHECK stays permissive (migration not rebuilt); the two
+// values are enforced here at the type layer.
+export type TestCaseStatus = 'passed' | 'failed';
 export type FailureType = 'wrong_conclusion' | 'step_not_executed';
 export type StepResult = 'passed' | 'failed';
 

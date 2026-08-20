@@ -74,7 +74,7 @@ export function createRunRepository(db: Db): RunRepository {
 
   const countFailing = db.prepare(
     `SELECT COUNT(*) AS n FROM test_case_result
-     WHERE run_id = ? AND status NOT IN ('passed', 'passed_healed')`,
+     WHERE run_id = ? AND status <> 'passed'`,
   );
 
   const insertResult = db.prepare(
