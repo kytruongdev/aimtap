@@ -24,17 +24,18 @@ function model(overrides: Partial<ReportModel> = {}): ReportModel {
       scope_criteria: null,
       not_run_count: 0,
       stop_reason: null,
-      totals: { total: 2, passed: 1, failed: 1, passed_healed: 0 },
+      totals: { total: 2, passed: 1, failed: 1, healed: 0 },
     },
     features: [
       {
         test_feature: 'Login',
         test_cases: [
-          { test_case: 'valid credentials', status: 'passed', duration_ms: 1000 },
-          { test_case: 'locked account', status: 'failed', duration_ms: 1500 },
+          { test_case: 'valid credentials', status: 'passed', healed: false, duration_ms: 1000 },
+          { test_case: 'locked account', status: 'failed', healed: false, duration_ms: 1500 },
         ],
       },
     ],
+    heals: [],
     failures: [
       {
         test_feature: 'Login',
@@ -65,7 +66,7 @@ describe('buildReportHtml', () => {
     const html = buildReportHtml(model());
 
     expect(html).toContain('demo (1.2.0)');
-    expect(html).toContain('Total 2 · Passed 1 · Failed 1');
+    expect(html).toContain('Total 2 · Passed 1 · Failed 1 · Healed 0');
     expect(html).toContain('Summary by test feature');
     expect(html).toContain('Login');
     expect(html).toContain('valid credentials');
@@ -113,6 +114,56 @@ describe('buildReportHtml', () => {
     const html = buildReportHtml(m);
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('labels a healed passed test case in the summary', () => {
+    const m = model();
+    m.features[0]!.test_cases[0] = { ...m.features[0]!.test_cases[0]!, healed: true };
+
+    const html = buildReportHtml(m);
+    expect(html).toContain('passed with self-healing');
+  });
+
+  it('renders a self-healing section with the old→new locator and screenshot', () => {
+    const m = model({
+      heals: [
+        {
+          test_feature: 'Login',
+          test_case: 'valid credentials',
+          screen: 'LoginScreen',
+          step_order: 2,
+          expected_locator: 'old-loc',
+          used_locator: 'new-loc',
+          screenshot_path: '/output/demo/run-1/heal.png',
+        },
+      ],
+    });
+
+    const html = buildReportHtml(m, () => 'data:image/png;base64,BBBB');
+    expect(html).toContain('Self-healing');
+    expect(html).toContain('old-loc');
+    expect(html).toContain('new-loc');
+    expect(html).toContain('<img class="shot" src="data:image/png;base64,BBBB"');
+  });
+
+  it('escapes HTML in heal locator strings', () => {
+    const m = model({
+      heals: [
+        {
+          test_feature: 'Login',
+          test_case: 'valid credentials',
+          screen: 'LoginScreen',
+          step_order: 1,
+          expected_locator: '<b>old</b>',
+          used_locator: 'new',
+          screenshot_path: null,
+        },
+      ],
+    });
+
+    const html = buildReportHtml(m);
+    expect(html).not.toContain('<b>old</b>');
+    expect(html).toContain('&lt;b&gt;old');
   });
 });
 

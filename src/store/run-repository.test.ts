@@ -143,11 +143,11 @@ describe('run repository', () => {
     expect(repo.getRunModel('r1')?.run.aggregate_result).toBe('failed');
   });
 
-  it('finalizes aggregate_result = passed when all test cases passed or self-healed', () => {
+  it('finalizes aggregate_result = passed when all test cases passed', () => {
     const repo = freshRepo();
     repo.saveRunStart(runStart);
     repo.saveTestCaseResult(makeResult({ id: 'tc-1', status: 'passed' }), []);
-    repo.saveTestCaseResult(makeResult({ id: 'tc-2', status: 'passed_healed' }), []);
+    repo.saveTestCaseResult(makeResult({ id: 'tc-2', status: 'passed' }), []);
 
     repo.finalizeRun(finalize);
 

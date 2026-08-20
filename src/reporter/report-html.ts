@@ -1,6 +1,6 @@
 import nodeFs from 'node:fs';
 import nodePath from 'node:path';
-import type { ReportModel, ReportFailure, ReportStep } from './report-model.js';
+import type { ReportModel, ReportFailure, ReportStep, ReportHeal } from './report-model.js';
 
 // TICKET-025: build the one-file HTML document from the report model (ADR-006). Pure and testable;
 // render.ts writes this HTML straight to a single self-contained .html file (screenshots embedded as
@@ -34,10 +34,12 @@ const STYLE = `
   table { border-collapse: collapse; width: 100%; margin: 8px 0; }
   th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; }
   .status-passed { color: #1a7f37; } .status-failed { color: #b3261e; }
-  .status-passed_healed { color: #9a6700; }
+  .healed-badge { color: #9a6700; font-size: 12px; }
   .banner { background: #fff4e5; border: 1px solid #e0b000; padding: 8px 12px; margin: 12px 0; }
   .missing { color: #b3261e; font-style: italic; }
   .failure { border-top: 2px solid #eee; padding-top: 12px; margin-top: 16px; }
+  .heal { border-top: 1px solid #eee; padding-top: 10px; margin-top: 12px; }
+  .heal code { background: #f6f8fa; padding: 1px 4px; }
   img.shot { max-width: 420px; border: 1px solid #ccc; }
 `;
 
@@ -59,7 +61,7 @@ function contextSection(model: ReportModel): string {
       <tr><th>Result</th><td>${orDash(c.aggregate_result)}</td>
           <th>Completion</th><td>${esc(c.completion)}</td></tr>
     </table>
-    <p>Total ${c.totals.total} · Passed ${c.totals.passed} · Failed ${c.totals.failed} · Passed (healed) ${c.totals.passed_healed}</p>
+    <p>Total ${c.totals.total} · Passed ${c.totals.passed} · Failed ${c.totals.failed} · Healed ${c.totals.healed}</p>
   `;
 }
 
@@ -67,10 +69,12 @@ function summarySection(model: ReportModel): string {
   const features = model.features
     .map((feature) => {
       const rows = feature.test_cases
-        .map(
-          (row) =>
-            `<tr><td>${esc(row.test_case)}</td><td class="status-${row.status}">${esc(row.status)}</td><td>${row.duration_ms} ms</td></tr>`,
-        )
+        .map((row) => {
+          const badge = row.healed
+            ? ' <span class="healed-badge">↻ passed with self-healing</span>'
+            : '';
+          return `<tr><td>${esc(row.test_case)}</td><td class="status-${row.status}">${esc(row.status)}${badge}</td><td>${row.duration_ms} ms</td></tr>`;
+        })
         .join('');
       return `<h3>${esc(feature.test_feature)}</h3>
         <table><tr><th>Test case</th><th>Status</th><th>Duration</th></tr>${rows}</table>`;
@@ -114,6 +118,27 @@ function failuresSection(model: ReportModel, resolveImage: ImageResolver): strin
   return `<h2>Failures</h2>${blocks}`;
 }
 
+function healBlock(heal: ReportHeal, resolveImage: ImageResolver): string {
+  const src = heal.screenshot_path === null ? null : resolveImage(heal.screenshot_path);
+  const image =
+    src !== null
+      ? `<img class="shot" src="${esc(src)}" alt="healed element" />`
+      : `<p class="missing">No screenshot</p>`;
+  return `
+      <div class="heal">
+        <h3>${esc(heal.test_feature)} › ${esc(heal.test_case)}</h3>
+        <p>Screen: ${orDash(heal.screen)} · Step: ${heal.step_order}</p>
+        <p>Locator: <code>${esc(heal.expected_locator)}</code> → <code>${esc(heal.used_locator)}</code></p>
+        ${image}
+      </div>`;
+}
+
+function healsSection(model: ReportModel, resolveImage: ImageResolver): string {
+  if (model.heals.length === 0) return '';
+  const blocks = model.heals.map((heal) => healBlock(heal, resolveImage)).join('');
+  return `<h2>Self-healing</h2>${blocks}`;
+}
+
 export function buildReportHtml(
   model: ReportModel,
   resolveImage: ImageResolver = (path) => path,
@@ -125,6 +150,7 @@ export function buildReportHtml(
 <body>
 ${contextSection(model)}
 ${summarySection(model)}
+${healsSection(model, resolveImage)}
 ${failuresSection(model, resolveImage)}
 </body>
 </html>`;

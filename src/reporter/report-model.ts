@@ -22,7 +22,8 @@ export interface ReportTotals {
   total: number;
   passed: number;
   failed: number;
-  passed_healed: number;
+  /** Passed test cases that reached green via self-healing — derived from heal_event (ADR-024). */
+  healed: number;
 }
 
 export interface ReportContext {
@@ -48,7 +49,20 @@ export interface ReportContext {
 export interface ReportTestCaseRow {
   test_case: string;
   status: TestCaseStatus;
+  /** True when the test case passed and has at least one heal_event — "passed with self-healing". */
+  healed: boolean;
   duration_ms: number;
+}
+
+/** One self-healing occurrence shown in the report (BR-206): the old→new locator and its screenshot. */
+export interface ReportHeal {
+  test_feature: string;
+  test_case: string;
+  screen: string;
+  step_order: number;
+  expected_locator: string;
+  used_locator: string;
+  screenshot_path: string | null;
 }
 
 export interface ReportFeature {
@@ -83,6 +97,7 @@ export interface ReportModel {
   context: ReportContext;
   features: ReportFeature[];
   failures: ReportFailure[];
+  heals: ReportHeal[];
 }
 
 export function buildReportModel(
@@ -93,7 +108,7 @@ export function buildReportModel(
   if (model === null) {
     throw new PlatformFailure(`Run ${runId} not found`, { run_id: runId });
   }
-  const { run, results, steps } = model;
+  const { run, results, steps, heals } = model;
 
   const stepsByResult = new Map<string, StepLog[]>();
   for (const step of steps) {
@@ -102,14 +117,20 @@ export function buildReportModel(
     stepsByResult.set(step.test_case_result_id, list);
   }
 
-  const totals: ReportTotals = { total: results.length, passed: 0, failed: 0, passed_healed: 0 };
+  // A test case "healed" when it passed and has at least one heal_event (ADR-024, BR-204). The label
+  // is derived here, not stored as a status.
+  const healedResultIds = new Set(heals.map((heal) => heal.test_case_result_id));
+
+  const totals: ReportTotals = { total: results.length, passed: 0, failed: 0, healed: 0 };
   const features: ReportFeature[] = [];
   const featureByName = new Map<string, ReportFeature>();
 
   for (const result of results) {
     if (result.status === 'passed') totals.passed += 1;
-    else if (result.status === 'failed') totals.failed += 1;
-    else totals.passed_healed += 1;
+    else totals.failed += 1;
+
+    const healed = result.status === 'passed' && healedResultIds.has(result.id);
+    if (healed) totals.healed += 1;
 
     let feature = featureByName.get(result.test_feature);
     if (feature === undefined) {
@@ -120,9 +141,29 @@ export function buildReportModel(
     feature.test_cases.push({
       test_case: result.test_case,
       status: result.status,
+      healed,
       duration_ms: result.duration_ms,
     });
   }
+
+  // Self-healing display entries (BR-205/BR-206): a failed test case can also carry heals, so this is
+  // built from all heal_events, mapped back to their test case via the result id.
+  const resultById = new Map(results.map((result) => [result.id, result]));
+  const healEntries: ReportHeal[] = heals.flatMap((heal) => {
+    const result = resultById.get(heal.test_case_result_id);
+    if (result === undefined) return [];
+    return [
+      {
+        test_feature: result.test_feature,
+        test_case: result.test_case,
+        screen: heal.screen,
+        step_order: heal.step_order,
+        expected_locator: heal.expected_locator,
+        used_locator: heal.used_locator,
+        screenshot_path: heal.screenshot_path,
+      },
+    ];
+  });
 
   const failures: ReportFailure[] = results
     .filter((result) => result.status === 'failed')
@@ -169,5 +210,6 @@ export function buildReportModel(
     },
     features,
     failures,
+    heals: healEntries,
   };
 }
