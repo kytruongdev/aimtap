@@ -8,6 +8,14 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
+### CẦN TEAM-LEAD LÀM RÕ: va chạm target Makefile `setup` (US-6.3, TICKET-032) — *đã xử lý (Team Lead, 2026-08-21)*
+Phát hiện lúc implement US-6.3: Makefile Phase 1 đã có `setup: npm ci`, còn TICKET-032 lại trao `setup` cho `aimtap setup`.
+
+**Chốt Team Lead — PA1: `make setup` trao cho AI, đổi npm-ci → `make install`.**
+- `setup: npm ci` → **`install: npm ci`**; thêm **`setup: npx tsx src/cli/index.ts setup`** (cùng pattern `doctor`); cập nhật `.PHONY` + comment đầu Makefile (máy mới: `make install` rồi `make setup`).
+- Lý do: ADR-026 (§17/§33/§41) + sequence-diagrams §3 đều **literal `make setup` = cài AI**; grep xác nhận **không doc nào** tham chiếu `make setup`=npm ci ngoài chính comment Makefile → bán kính ≈ 0. `make install` là tên chuẩn cho cài phụ thuộc. PA2 (`setup-ai`) nghịch literal ADR-026 (doc-drift); PA3 (gộp) ép bước token tương tác vào mỗi lần cài deps — loại.
+- Đây là tên lệnh vận hành (remit Team Lead), không chạm khuôn khổ. TICKET-032 đã cập nhật chỉ-dẫn + AC (`make setup`→`aimtap setup`, `make install`→`npm ci`). Dev tiến hành phần Makefile; code còn lại đã xong + gate xanh.
+
 ### CẦN SA ĐỒNG BỘ (không chặn): từ vựng interface-spec §CodeAgent lệch bản hiện thực US-6.2 — *đã xử lý (SA, 2026-08-21)*
 Phát hiện lúc review US-6.2 (`2a78ee0`/`ac260c9`). `interface-spec.md` §CodeAgent (dòng 5–11) mô tả port bằng ba hàm cấp cao `healLocator(ctx)`/`generateTestCase(ctx)`/`isEnabled(appId)`. Bản hiện thực (theo TICKET-030, TL chốt) là port **cấp thấp** `CodeAgent.invoke(mode: 'heal'|'generate', prompt): Promise<string|null>`; nội dung heal/generate (dựng prompt, parse ra `Locator`/file nháp) là **tầng trên** ở US-7.2/US-8.1, và `isEnabled` thành cổng gác tại điểm kiểm soát trên giá trị công tắc được truyền vào (ticket §25). Code trung thành ticket — KHÔNG vi phạm khuôn khổ; đây là doc-drift của artifact SA. SA cân nhắc hòa hợp interface-spec §CodeAgent khi US-7.2/US-8.1 land (phân định rõ port cấp thấp `invoke` vs các hàm heal/generate cấp cao). Không chặn merge US-6.2.
 

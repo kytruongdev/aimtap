@@ -22,14 +22,18 @@ QC automation có một lệnh cài đặt chuẩn bị AI CLI + token, và bư�
     3. In hướng dẫn chạy `claude setup-token` một lần; nhận token người dùng dán.
     4. Ghi `CLAUDE_CODE_OAUTH_TOKEN=<token>` vào `.env.local` gốc (git-ignored) — thêm mới hoặc cập nhật khóa đã có, không xóa khóa khác.
   - `setupCommand(): Command` — bọc `runSetup` cho commander (ADR-017), `exitOverride()` như các lệnh hiện có; đăng ký ở `program.ts`.
-- `Makefile`: thêm target `setup` gọi lệnh `aimtap setup`. Cập nhật tài liệu Makefile nếu ticket đụng (`conventions.md` §3 DoD tài liệu).
+- `Makefile`: **`make setup` trao cho AI setup** (ADR-026, sequence §3). Vì target `setup` hiện có đang chạy `npm ci` (bootstrap Phase 1), đổi tên nó:
+  - Đổi `setup: npm ci` → **`install: npm ci`** (tên chuẩn cho cài phụ thuộc).
+  - Thêm **`setup: npx tsx src/cli/index.ts setup`** (cùng pattern target `doctor`).
+  - Cập nhật `.PHONY` (thêm `install`) và comment đầu file: máy mới chạy `make install` (deps) rồi `make setup` (chuẩn bị AI — một lần, chỉ khi dùng AI).
+  - Không doc nào khác tham chiếu `make setup`=npm ci (đã grep) nên không cần sửa thêm.
 - Ranh giới: `cli → config` (ghi/đọc token), `cli → device` (probe), `cli → shared` — đã nằm trong ma trận hiện có.
 - Phần tương tác (dán token, in hướng dẫn) kiểm chứng thủ công; logic ghi/cập nhật `.env.local` test đơn vị với file tạm.
 
 **Acceptance Criteria (cấp code)**
 - [ ] `runSetup` phát hiện CLI vắng qua probe và in hướng dẫn cài (test đơn vị với probe giả lập cả hai nhánh).
 - [ ] Ghi/cập nhật `CLAUDE_CODE_OAUTH_TOKEN` vào `.env.local` không làm mất khóa khác (test đơn vị với file tạm).
-- [ ] `make setup` chạy được lệnh; token không lọt vào log.
+- [ ] `make setup` chạy `aimtap setup`; `make install` chạy `npm ci`; token không lọt vào log.
 - [ ] Lệnh đăng ký ở `program.ts`; `exitOverride()` áp dụng (mã thoát test được).
 
 ### TICKET-033: `doctor` kiểm AI CLI + token (không chặn lượt chạy không-AI)

@@ -63,6 +63,34 @@ export function loadCliToken(
   return token === '' ? null : token;
 }
 
+/**
+ * Add or update a `KEY=value` entry in the root .env.local, preserving every other line (other keys,
+ * comments, blanks). Used by `aimtap setup` to store the AI CLI token without clobbering existing
+ * secrets (ADR-026). Creates the file if it does not exist.
+ */
+export function upsertEnvVar(key: string, value: string, opts: { rootDir?: string } = {}): void {
+  const file = path.join(opts.rootDir ?? process.cwd(), '.env.local');
+  const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  // Drop the trailing newline so a newline-terminated file does not leave a blank line to append after.
+  const lines = existing === '' ? [] : existing.replace(/\n$/, '').split('\n');
+  const entry = `${key}=${value}`;
+
+  let replaced = false;
+  const next = lines.map((raw) => {
+    const trimmed = raw.trim();
+    if (trimmed === '' || trimmed.startsWith('#')) return raw;
+    const eq = trimmed.indexOf('=');
+    if (eq !== -1 && trimmed.slice(0, eq).trim() === key) {
+      replaced = true;
+      return entry;
+    }
+    return raw;
+  });
+  if (!replaced) next.push(entry);
+
+  fs.writeFileSync(file, `${next.join('\n').replace(/\n+$/, '')}\n`, 'utf8');
+}
+
 // --- Per-app test data (apps/<app-id>/test-data.*.json) ----------------------------------------
 
 /** A nested tree of string leaves; an account is a cluster of related fields (ADR-009). */

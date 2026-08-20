@@ -1,13 +1,17 @@
 # Canonical operational commands.
 # Docs reference these targets instead of repeating command strings.
 #
-# First-time bootstrap only: run `npm install` once to generate and commit package-lock.json,
-# then use `make setup` (npm ci) on every machine after that.
+# First-time bootstrap only: run `npm install` once to generate and commit package-lock.json.
+# On every machine after that: `make install` (npm ci) to install dependencies, then `make setup`
+# once to configure the AI CLI (Claude Code) and its token.
 
-.PHONY: setup doctor run run-assert-fail report test lint typecheck
+.PHONY: install setup doctor run run-assert-fail report test lint typecheck
+
+install:
+	npm ci
 
 setup:
-	npm ci
+	npx tsx src/cli/index.ts setup
 
 doctor:
 	npx tsx src/cli/index.ts doctor
