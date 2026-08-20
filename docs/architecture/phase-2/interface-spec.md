@@ -2,13 +2,22 @@
 
 Chữ ký dưới đây là hợp đồng ở mức interface; kiểu chi tiết suy từ schema Zod tại chỗ hiện thực. Dữ liệu đến từ ngoài (đầu ra AI CLI) PHẢI qua Zod.
 
-## Interface nội bộ: CodeAgent (AI Gateway)
-**Mục đích:** Điểm duy nhất gọi AI CLI; đặt công tắc bật/tắt theo app, hạn mức số lần gọi/lượt chạy, timeout; hai chế độ gọi.
+## Interface nội bộ: CodeAgent (AI Gateway) — transport
+**Mục đích:** Điểm duy nhất gọi AI CLI, ở mức vận chuyển. Là nơi đặt điểm kiểm soát: hạn mức số lần gọi trên một lượt chạy và timeout mỗi lần; **không bao giờ ném** — trả `null` khi lỗi/timeout/vượt hạn/thiếu token (BR-208, NFR-204).
 **Đầu vào / đầu ra:**
-- `healLocator(ctx: { expectedLocator, screenName, pageSource }): Promise<Locator | null>` — chế độ read-only; trả một `Locator` đã kiểm bằng Zod, hoặc `null` khi AI tắt/lỗi/không suy được. Không sửa file.
-- `generateTestCase(ctx: { description, pageSource }): Promise<GenerateOutcome>` — sinh file nháp; trả kết quả (đường dẫn file nháp / lỗi).
-- `isEnabled(appId): boolean` — công tắc AI theo app (BR-209).
-**Liên quan:** UC-201, UC-203. **Business rule:** BR-201, BR-202, BR-219.
+- `invoke(mode: 'heal' | 'generate', prompt: string): Promise<string | null>` — spawn `claude -p --output-format json` với quyền theo `mode` (heal read-only; generate ghi giới hạn), đưa `prompt` qua stdin, trả trường `result` (chuỗi) hoặc `null`.
+- Điểm kiểm soát `withControlPoint(inner, limits)` bọc adapter; factory `createCodeAgent({ cli, limits })` chọn adapter theo CLI (giai đoạn này `claude-code`).
+**Liên quan:** UC-201, UC-203. **Business rule:** BR-208, BR-219, NFR-202/204.
+
+## Interface nội bộ: heal-invoker / Script Generator (dựng trên CodeAgent)
+**Mục đích:** Tầng nghiệp vụ dựng prompt và parse kết quả, trên `CodeAgent.invoke`.
+**Đầu vào / đầu ra:**
+- `healLocator(agent: CodeAgent, ctx: { expectedLocator, screenName, pageSource }): Promise<Locator | null>` (US-7.2) — dựng prompt heal, gọi `invoke('heal', ...)`, parse `result` qua Zod (`{ strategy, selector }`) → dựng `Locator` (kiểu ở `shared`, ADR-027); sai định dạng/`null` → `null`. Không sửa file.
+- `generateTestCase(agent: CodeAgent, ctx: { description, pageSource }): Promise<GenerateOutcome>` (US-8.1) — dựng prompt sinh (kèm danh sách step definition hiện có, BR-212), gọi `invoke('generate', ...)`, sinh file nháp + đánh dấu do AI sinh (FR-GEN-05).
+**Liên quan:** UC-201, UC-203. **Business rule:** BR-201, BR-202, BR-211, BR-212.
+
+## Bật/tắt AI theo app
+Công tắc AI (BR-209) KHÔNG là phương thức của `CodeAgent`. Tầng lắp ráp lượt chạy (US-7.5) và lệnh generate (US-8.2) đọc `AppConfig.ai` (`enabled`, `healRetries`) rồi chỉ tiêm healer / gọi generate khi bật; AI tắt → không dựng `CodeAgent`, hành vi Phase 1.
 
 ## Interface nội bộ: Locator Resolver — tiêm healer
 **Mục đích:** Cho phép tự phục hồi mà không để Locator Resolver phụ thuộc AI Gateway (tránh chu trình; cùng pattern sink ADR-014).

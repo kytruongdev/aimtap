@@ -8,6 +8,11 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
+### CẦN SA ĐỒNG BỘ (không chặn): từ vựng interface-spec §CodeAgent lệch bản hiện thực US-6.2 — *đã xử lý (SA, 2026-08-21)*
+Phát hiện lúc review US-6.2 (`2a78ee0`/`ac260c9`). `interface-spec.md` §CodeAgent (dòng 5–11) mô tả port bằng ba hàm cấp cao `healLocator(ctx)`/`generateTestCase(ctx)`/`isEnabled(appId)`. Bản hiện thực (theo TICKET-030, TL chốt) là port **cấp thấp** `CodeAgent.invoke(mode: 'heal'|'generate', prompt): Promise<string|null>`; nội dung heal/generate (dựng prompt, parse ra `Locator`/file nháp) là **tầng trên** ở US-7.2/US-8.1, và `isEnabled` thành cổng gác tại điểm kiểm soát trên giá trị công tắc được truyền vào (ticket §25). Code trung thành ticket — KHÔNG vi phạm khuôn khổ; đây là doc-drift của artifact SA. SA cân nhắc hòa hợp interface-spec §CodeAgent khi US-7.2/US-8.1 land (phân định rõ port cấp thấp `invoke` vs các hàm heal/generate cấp cao). Không chặn merge US-6.2.
+
+**Đã đồng bộ (SA, 2026-08-21):** `interface-spec.md` §CodeAgent viết lại theo phân tầng đã hiện thực: (1) **CodeAgent (transport)** = `invoke(mode, prompt): Promise<string|null>` + `withControlPoint`/`createCodeAgent`, không bao giờ ném; (2) **heal-invoker / Script Generator** = `healLocator`/`generateTestCase` dựng trên `invoke` (US-7.2/US-8.1), parse Zod → `Locator` (kiểu ở `shared`, ADR-027); (3) **Bật/tắt AI theo app** không là method của CodeAgent — tầng lắp ráp US-7.5 / lệnh generate US-8.2 đọc `AppConfig.ai` rồi mới tiêm/gọi. Khớp bản US-6.2 đã merge; là hợp đồng cho US-7.2/US-8.1.
+
 ### CẦN BA LÀM: re-scope Phase 2 sang hướng B (AI CLI ngoài) — *đã xử lý (BA, 2026-08-20)*
 Bối cảnh: Product team chọn **phương án B** — QC automation điều khiển một **AI CLI bên ngoài** (ví dụ Claude Code); nền tảng mỏng, KHÔNG nhúng AI. Phân tích lý do: `docs/business/ai-integration-analysis.md`.
 

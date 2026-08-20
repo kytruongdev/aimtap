@@ -26,6 +26,7 @@ export default tseslint.config(
         { type: 'root', mode: 'file', pattern: 'src/index.ts' },
         { type: 'shared', mode: 'folder', pattern: 'src/shared' },
         { type: 'config', mode: 'folder', pattern: 'src/config' },
+        { type: 'ai', mode: 'folder', pattern: 'src/ai' },
         { type: 'registry', mode: 'folder', pattern: 'src/registry' },
         { type: 'store', mode: 'folder', pattern: 'src/store' },
         { type: 'reporter', mode: 'folder', pattern: 'src/reporter' },
@@ -53,6 +54,7 @@ export default tseslint.config(
                 'root',
                 'shared',
                 'config',
+                'ai',
                 'registry',
                 'store',
                 'reporter',
@@ -76,6 +78,7 @@ export default tseslint.config(
           rules: [
             { from: ['shared'], allow: [] },
             { from: ['config'], allow: ['shared'] },
+            { from: ['ai'], allow: ['shared', 'config'] },
             { from: ['registry'], allow: ['shared'] },
             { from: ['store'], allow: ['shared'] },
             { from: ['locator'], allow: ['shared'] },
