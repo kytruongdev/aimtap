@@ -6,3 +6,6 @@ export type { CodeAgent, AgentMode, AgentLimits } from './code-agent.js';
 
 export { healLocator } from './heal-invoker.js';
 export type { HealContext } from './heal-invoker.js';
+
+export { generateTestCase } from './generate-invoker.js';
+export type { GenerateContext, GenerateOutcome } from './generate-invoker.js';
