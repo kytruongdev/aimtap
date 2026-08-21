@@ -1,4 +1,10 @@
-import type { RunRepository, StepLog, TestCaseResult, TestCaseStatus } from '../store/index.js';
+import type {
+  HealEvent,
+  RunRepository,
+  StepLog,
+  TestCaseResult,
+  TestCaseStatus,
+} from '../store/index.js';
 import { createExecutionLog } from './execution-log.js';
 import { classifyFailure, type Classification } from './failure-classifier.js';
 import {
@@ -40,8 +46,21 @@ export interface ScenarioInfo {
   duration_ms: number;
 }
 
+/**
+ * What the Locator Resolver knows about a heal at find time (US-7.2 HealSignal). Declared here with
+ * Evidence's own type — not imported from `locator` — so there is no cross edge; the assembly layer
+ * (US-7.5) bridges `registerHealSink((s) => collector.onHeal(s))` and TypeScript's structural typing
+ * keeps the two shapes in step.
+ */
+export interface HealSignalInput {
+  screen: string;
+  expectedLocator: string;
+  usedLocator: string;
+  occurredAt: string;
+}
+
 export interface EvidenceCollectorDeps {
-  repository: Pick<RunRepository, 'saveTestCaseResult'>;
+  repository: Pick<RunRepository, 'saveTestCaseResult' | 'saveHealEvents' | 'transaction'>;
   /** The screenshot source; the WebdriverIO browser in a run, a fake in unit tests. */
   screenshotter: Screenshotter;
   appId: string;
@@ -56,6 +75,8 @@ export interface EvidenceCollector {
   onStepEnd(step: StepEvent): void;
   onScenarioEnd(info: ScenarioInfo): Promise<TestCaseResult>;
   setCurrentScreen(name: string): void;
+  /** A self-heal happened mid-step: capture the element and buffer it until the step order is known. */
+  onHeal(signal: HealSignalInput): void;
 }
 
 export function createEvidenceCollector(deps: EvidenceCollectorDeps): EvidenceCollector {
@@ -69,12 +90,25 @@ export function createEvidenceCollector(deps: EvidenceCollectorDeps): EvidenceCo
   // Run-wide, never reset: keeps screenshot file names unique across scenarios in the same run dir.
   let shotSeq = 0;
 
+  // Heals that happened during the current step, awaiting the step order (assigned at onStepEnd).
+  let pendingHeals: Array<{ signal: HealSignalInput; screenshot: Promise<ScreenshotResult> }> = [];
+  // Heals with a resolved step order, collected across the scenario.
+  let scenarioHeals: Array<{
+    signal: HealSignalInput;
+    step_order: number;
+    screenshot: Promise<ScreenshotResult>;
+  }> = [];
+  let lastStepOrder = 0;
+
   function reset(): void {
     log = createExecutionLog();
     currentScreen = null;
     failureScreen = null;
     classification = null;
     pending.clear();
+    pendingHeals = [];
+    scenarioHeals = [];
+    lastStepOrder = 0;
   }
 
   return {
@@ -101,6 +135,26 @@ export function createEvidenceCollector(deps: EvidenceCollectorDeps): EvidenceCo
         const name = `${failed ? 'fail' : 'mark'}-step-${step.order}-${shotSeq++}`;
         pending.set(step.order, captureScreenshot(screenshotter, { appId, runId, name, outputDir }));
       }
+
+      // Heals buffered since the previous step's end happened during this step, so stamp this step's
+      // order on them (the heal occurs mid-step, before onStepEnd — using "current step" would be off
+      // by one). Clear the buffer for the next step.
+      lastStepOrder = step.order;
+      for (const heal of pendingHeals) {
+        scenarioHeals.push({ signal: heal.signal, step_order: step.order, screenshot: heal.screenshot });
+      }
+      pendingHeals = [];
+    },
+
+    onHeal(signal) {
+      // Capture the healed element off the step's wait path (NFR-10): keep the promise, do not await.
+      const screenshot = captureScreenshot(screenshotter, {
+        appId,
+        runId,
+        name: `heal-${shotSeq++}`,
+        outputDir,
+      });
+      pendingHeals.push({ signal, screenshot });
     },
 
     async onScenarioEnd(info) {
@@ -138,7 +192,35 @@ export function createEvidenceCollector(deps: EvidenceCollectorDeps): EvidenceCo
         screenshot_path: shots.get(record.step_order)?.path ?? null,
       }));
 
-      repository.saveTestCaseResult(result, steps);
+      // Any heal buffered but never stamped (defensive) is attributed to the last step seen.
+      for (const heal of pendingHeals) {
+        scenarioHeals.push({ signal: heal.signal, step_order: lastStepOrder, screenshot: heal.screenshot });
+      }
+      pendingHeals = [];
+
+      // Enrich each HealSignal into a full HealEvent: Evidence owns step_order, test_case_result_id
+      // and the element screenshot (BR-205/206). A capture failure leaves screenshot_path null and
+      // never changes the outcome (BR-004).
+      const healEvents: HealEvent[] = [];
+      for (const heal of scenarioHeals) {
+        const shot = await heal.screenshot;
+        healEvents.push({
+          id: newId(),
+          test_case_result_id: result.id,
+          step_order: heal.step_order,
+          screen: heal.signal.screen,
+          expected_locator: heal.signal.expectedLocator,
+          used_locator: heal.signal.usedLocator,
+          screenshot_path: shot.path,
+          occurred_at: heal.signal.occurredAt,
+        });
+      }
+
+      // One transaction: the test case, its steps and its heal events commit together (BR-207).
+      repository.transaction(() => {
+        repository.saveTestCaseResult(result, steps);
+        if (healEvents.length > 0) repository.saveHealEvents(healEvents);
+      });
       reset();
       return result;
     },

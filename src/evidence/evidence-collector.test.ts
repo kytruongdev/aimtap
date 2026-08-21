@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createEvidenceCollector } from './evidence-collector.js';
 import type { Screenshotter } from './screenshot-writer.js';
 import { AppFailure } from '../shared/index.js';
-import type { StepLog, TestCaseResult } from '../store/index.js';
+import type { HealEvent, StepLog, TestCaseResult } from '../store/index.js';
 
 const dirs: string[] = [];
 
@@ -21,13 +21,39 @@ afterEach(() => {
 
 function fakeRepo() {
   const calls: { result: TestCaseResult; steps: StepLog[] }[] = [];
+  const healCalls: HealEvent[] = [];
+  let txDepth = 0;
+  let healsInsideTx = true;
   return {
     saveTestCaseResult(result: TestCaseResult, steps: StepLog[]) {
       calls.push({ result, steps });
     },
+    saveHealEvents(events: HealEvent[]) {
+      if (txDepth === 0) healsInsideTx = false; // heals must be written within a transaction
+      healCalls.push(...events);
+    },
+    transaction(fn: () => void) {
+      txDepth += 1;
+      try {
+        fn();
+      } finally {
+        txDepth -= 1;
+      }
+    },
     calls,
+    healCalls,
+    get healsInsideTx() {
+      return healsInsideTx;
+    },
   };
 }
+
+const healSignal = {
+  screen: 'LoginScreen',
+  expectedLocator: 'accessibility-id(login-old)',
+  usedLocator: 'accessibility-id(login-new)',
+  occurredAt: '2026-07-30T10:00:01.000Z',
+};
 
 function seqId(): () => string {
   let n = 0;
@@ -232,5 +258,106 @@ describe('evidence collector', () => {
     expect(second.failure_type).toBeNull();
     expect(second.error_message).toBeNull();
     expect(repo.calls[1]?.steps).toHaveLength(1);
+  });
+});
+
+describe('evidence collector — self-healing', () => {
+  function collectorWith(repo: ReturnType<typeof fakeRepo>, shooter: Screenshotter = okShooter) {
+    return createEvidenceCollector({
+      repository: repo,
+      screenshotter: shooter,
+      appId: 'demo',
+      runId: 'run-1',
+      newId: seqId(),
+      outputDir: tempOutput(),
+    });
+  }
+
+  it('stamps the current step order on a heal that happened during that step', async () => {
+    const repo = fakeRepo();
+    const collector = collectorWith(repo);
+
+    collector.onStepEnd({ order: 1, text: 'open login', result: 'passed', duration_ms: 100 });
+    collector.onHeal(healSignal); // happens during step 2, before its onStepEnd
+    collector.onStepEnd({ order: 2, text: 'tap login', result: 'passed', duration_ms: 100 });
+    await collector.onScenarioEnd(info);
+
+    expect(repo.healCalls).toHaveLength(1);
+    expect(repo.healCalls[0]?.step_order).toBe(2);
+  });
+
+  it('attributes a heal in the first step to step 1', async () => {
+    const repo = fakeRepo();
+    const collector = collectorWith(repo);
+
+    collector.onHeal(healSignal);
+    collector.onStepEnd({ order: 1, text: 'tap login', result: 'passed', duration_ms: 100 });
+    await collector.onScenarioEnd(info);
+
+    expect(repo.healCalls[0]?.step_order).toBe(1);
+  });
+
+  it('enriches the signal into a full heal_event and writes it in the transaction', async () => {
+    const repo = fakeRepo();
+    const collector = collectorWith(repo);
+
+    collector.onHeal(healSignal);
+    collector.onStepEnd({ order: 1, text: 'tap login', result: 'passed', duration_ms: 100 });
+    const result = await collector.onScenarioEnd(info);
+
+    expect(repo.healsInsideTx).toBe(true);
+    expect(repo.healCalls[0]).toMatchObject({
+      test_case_result_id: result.id,
+      step_order: 1,
+      screen: 'LoginScreen',
+      expected_locator: 'accessibility-id(login-old)',
+      used_locator: 'accessibility-id(login-new)',
+      occurred_at: '2026-07-30T10:00:01.000Z',
+    });
+    expect(repo.healCalls[0]?.screenshot_path).toBe(path.join('screenshots', 'run-1', 'heal-0.png'));
+  });
+
+  it('records heals even when the test case fails (BR-205)', async () => {
+    const repo = fakeRepo();
+    const collector = collectorWith(repo);
+
+    collector.onHeal(healSignal);
+    collector.onStepEnd({
+      order: 1,
+      text: 'submit',
+      result: 'failed',
+      duration_ms: 50,
+      error: new AppFailure('wrong text', undefined, 'assertion'),
+    });
+    const result = await collector.onScenarioEnd(info);
+
+    expect(result.status).toBe('failed');
+    expect(repo.healCalls).toHaveLength(1);
+    expect(repo.healCalls[0]?.step_order).toBe(1);
+  });
+
+  it('leaves screenshot_path null when the heal capture fails, without throwing', async () => {
+    const failingShooter: Screenshotter = {
+      takeScreenshot: () => Promise.reject(new Error('session gone')),
+    };
+    const repo = fakeRepo();
+    const collector = collectorWith(repo, failingShooter);
+
+    collector.onHeal(healSignal);
+    collector.onStepEnd({ order: 1, text: 'tap login', result: 'passed', duration_ms: 100 });
+    const result = await collector.onScenarioEnd(info);
+
+    expect(result.status).toBe('passed'); // heal evidence is auxiliary (BR-004)
+    expect(repo.healCalls[0]?.screenshot_path).toBeNull();
+  });
+
+  it('writes no heal events for a scenario with no heals', async () => {
+    const repo = fakeRepo();
+    const collector = collectorWith(repo);
+
+    collector.onStepEnd({ order: 1, text: 'tap login', result: 'passed', duration_ms: 100 });
+    await collector.onScenarioEnd(info);
+
+    expect(repo.healCalls).toHaveLength(0);
   });
 });

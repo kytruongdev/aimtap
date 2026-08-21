@@ -241,4 +241,35 @@ describe('heal events', () => {
     expect(model?.results).toHaveLength(0);
     expect(model?.heals).toHaveLength(0);
   });
+
+  it('transaction() commits the test case and its heals together', () => {
+    const repo = freshRepo();
+    repo.saveRunStart(runStart);
+
+    repo.transaction(() => {
+      repo.saveTestCaseResult(makeResult(), []);
+      repo.saveHealEvents([makeHeal()]);
+    });
+
+    const model = repo.getRunModel('r1');
+    expect(model?.results).toHaveLength(1);
+    expect(model?.heals).toHaveLength(1);
+  });
+
+  it('transaction() rolls back the test case when a heal write fails', () => {
+    const repo = freshRepo();
+    repo.saveRunStart(runStart);
+
+    const badHeal = makeHeal({ screen: null as unknown as string });
+    expect(() =>
+      repo.transaction(() => {
+        repo.saveTestCaseResult(makeResult(), []);
+        repo.saveHealEvents([badHeal]);
+      }),
+    ).toThrow();
+
+    const model = repo.getRunModel('r1');
+    expect(model?.results).toHaveLength(0);
+    expect(model?.heals).toHaveLength(0);
+  });
 });

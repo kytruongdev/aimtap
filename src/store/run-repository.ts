@@ -46,6 +46,12 @@ export interface RunRepository {
   finalizeRun(summary: RunFinalize): void;
   saveTestCaseResult(result: TestCaseResult, steps: StepLog[]): void;
   saveHealEvents(events: HealEvent[]): void;
+  /**
+   * Run `fn` in a single transaction. `saveTestCaseResult`/`saveHealEvents` called inside it nest as
+   * savepoints, so the Evidence Collector can persist a test case and its heal events atomically
+   * (US-7.3, BR-207).
+   */
+  transaction(fn: () => void): void;
   getRunModel(runId: string): RunModel | null;
 }
 
@@ -137,6 +143,11 @@ export function createRunRepository(db: Db): RunRepository {
     for (const event of events) insertHeal.run(event);
   });
 
+  // Wraps a caller function in one transaction; inner saveResultTx/saveHealsTx nest as savepoints.
+  const runInTx = db.transaction((fn: () => void) => {
+    fn();
+  });
+
   return {
     saveRunStart(run) {
       insertRun.run(run);
@@ -164,6 +175,10 @@ export function createRunRepository(db: Db): RunRepository {
 
     saveHealEvents(events) {
       saveHealsTx(events);
+    },
+
+    transaction(fn) {
+      runInTx(fn);
     },
 
     getRunModel(runId) {
