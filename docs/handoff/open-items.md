@@ -8,6 +8,14 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
+### CẦN TEAM-LEAD LÀM RÕ: hướng dẫn thư mục đích `apps/<app-id>/` cho CLI khi sinh file (US-8.2, TICKET-043) — *đã xử lý (Team Lead, 2026-08-21)*
+Dev phát hiện: cơ chế sinh (US-8.1 merged) để `claude` (`acceptEdits`/`Write Edit`) tự ghi file **theo cwd** rồi trả `draftPaths`; prompt/`GenerateContext` không mang thư mục đích → không gì đảm bảo file rơi vào `apps/<app-id>/`. Ba PA Dev nêu: PA1 (chèn vào description — bẩn), PA2 (đổi prompt/`GenerateContext` mang `targetDir` — chạm interface merged), PA3 (người tự di chuyển file lúc review).
+
+**Chốt Team Lead — PA-cwd (đòn bẩy đúng, khác cả ba PA):** nền tảng **đặt thư mục làm việc của tiến trình con `claude` = `apps/<appId>/`**. Deterministic (không nhờ LLM tuân đường dẫn trong prompt — không đáng tin), không bẩn description, và khoanh scope ghi trong app dir.
+- **Verify code (`src/ai/adapters/claude-code.ts`):** `defaultSpawn` gọi `spawn(command, args, { env, stdio })` — **không set `cwd`** → claude ghi theo cwd cha (gốc repo). `SpawnFn` input + `invoke` + `createCodeAgent` chưa có đường truyền cwd.
+- **Giải:** thread một `cwd` **optional, additive** qua transport `ai`: `SpawnFn` thêm `cwd?`; `defaultSpawn` truyền `spawn(...,{cwd})`; `createClaudeCodeAdapter({token,cwd?})` → `createCodeAgent({cli,limits,cwd?})`. Lệnh `generate` dựng agent với `cwd = apps/<appId>/`; heal (US-7.5) không truyền cwd → tương thích ngược. Đây là **tham số additive trên transport nội bộ** (không đổi ranh giới/protocol/pattern) → execution-level, **remit Team Lead, không cần SA**. Khác PA2 (đổi ngữ nghĩa prompt) mà Dev lo.
+- Đã cập nhật TICKET-043 (bước dựng CodeAgent với cwd + cơ chế + AC kiểm `cwd` truyền tới `spawn`). Thay đổi transport `ai` nằm trong PR US-8.2 (mở rộng additive US-6.2, không đổi US-8.1). Không chặn — Dev tiến hành.
+
 ### CẦN TEAM-LEAD LÀM RÕ: nguồn `stepOrder` trong `HealRecord` mà Locator Resolver đẩy (US-7.2, TICKET-037) — *đã xử lý (Team Lead, 2026-08-21)*
 Dev phát hiện mâu thuẫn: interface-spec §Evidence onHeal + sequence §1 dòng 25 bắt resolver đẩy `HealRecord` gồm `stepOrder`, nhưng `find(locator, screenName)` giữ chữ ký ổn định (ADR-004) nên resolver không biết `stepOrder`.
 
