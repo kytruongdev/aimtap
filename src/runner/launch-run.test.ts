@@ -16,6 +16,7 @@ const simApp: LaunchTarget = {
   buildPath: '/builds/demo.app',
   deviceType: 'simulator',
   deviceId: 'iPhone 15',
+  ai: { enabled: false, healRetries: 3 },
 };
 const device: DeviceContext = {
   device_id: 'iPhone 15',
@@ -45,8 +46,17 @@ describe('pure helpers', () => {
       AIMTAP_PLATFORM_VERSION: '17.5',
       AIMTAP_APP_PATH: '/builds/demo.app',
       AIMTAP_OUTPUT_DIR: '/out',
+      AIMTAP_AI_ENABLED: '0',
+      AIMTAP_AI_HEAL_RETRIES: '3',
     });
     expect(env.AIMTAP_UDID).toBeUndefined();
+  });
+
+  it('carries the per-app AI switch into the env', () => {
+    const aiApp: LaunchTarget = { ...simApp, ai: { enabled: true, healRetries: 5 } };
+    const env = buildRunEnv('run-1', aiApp, device, '/out');
+    expect(env.AIMTAP_AI_ENABLED).toBe('1');
+    expect(env.AIMTAP_AI_HEAL_RETRIES).toBe('5');
   });
 
   it('adds udid and signing identity for a real device from the ambient env', () => {

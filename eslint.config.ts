@@ -85,7 +85,7 @@ export default tseslint.config(
             { from: ['evidence'], allow: ['shared', 'store'] },
             { from: ['reporter'], allow: ['shared', 'store'] },
             { from: ['device'], allow: ['shared', 'registry'] },
-            { from: ['runner'], allow: ['shared', 'device', 'evidence', 'locator', 'store'] },
+            { from: ['runner'], allow: ['shared', 'device', 'evidence', 'locator', 'store', 'ai'] },
             { from: ['cli'], allow: ['shared', 'config', 'registry', 'device', 'runner', 'reporter'] },
             {
               from: ['root'],
