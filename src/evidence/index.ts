@@ -16,4 +16,5 @@ export type {
   EvidenceCollectorDeps,
   ScenarioInfo,
   StepEvent,
+  HealSignalInput,
 } from './evidence-collector.js';

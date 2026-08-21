@@ -112,6 +112,7 @@ function fakeEvidence(status: TestCaseStatus = 'passed'): EvidenceCollector & {
       scenarios.push(info);
       return Promise.resolve({ status } as TestCaseResult);
     },
+    onHeal: () => {},
   };
 }
 
