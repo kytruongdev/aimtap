@@ -30,6 +30,16 @@ Test cases and Page Objects reach the main branch only through an approved PR (B
 - [ ] The **opening step sets up** the state and data the test case needs; consumed data is created there, not stored (BR-005, BR-017).
 - [ ] The screen name passed to `find(locator, screenName)` matches the Page Object of that screen (ADR-011).
 
+## Checklist — AI-generated test cases (`@ai-generated`, if the PR adds any)
+
+An AI-generated test case is a **draft**, not final; a human confirms it and opens this PR. The
+platform never puts an AI-generated test case on the main branch by itself (BR-213, BR-217, BC-08).
+
+- [ ] **Confirmed via the behaviour description and execution log** — read the plain-language behaviour and check the run log against what you described, without reading the step definitions or Page Object (BR-214, FR-GEN-02).
+- [ ] **Ran green on a device at least once** before opening this PR, using the existing `aimtap run` — no new platform mechanism (BR-215, FR-GEN-04).
+- [ ] The scenario is tagged **`@ai-generated`** so the reviewer can tell it apart and review the generated parts closely (BR-216, FR-GEN-05).
+- [ ] It reaches the main branch **only through this approved PR** opened by a human; acceptance of a test case belongs to people (BR-217, NFR-06, BC-08).
+
 ## How to verify
 
 <!-- Commands for the automated gates; manual steps for any device-touching part (conventions §3.1). -->
