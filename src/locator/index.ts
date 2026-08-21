@@ -10,5 +10,13 @@ export {
 } from './locator.js';
 export type { Locator, LocatorStrategy } from './locator.js';
 
-export { find, registerScreenSink, clearScreenSink } from './locator-resolver.js';
-export type { Element, ScreenSink } from './locator-resolver.js';
+export {
+  find,
+  registerScreenSink,
+  clearScreenSink,
+  registerHealer,
+  clearHealer,
+  registerHealSink,
+  clearHealSink,
+} from './locator-resolver.js';
+export type { Element, ScreenSink, HealFn, HealSignal, HealSink } from './locator-resolver.js';

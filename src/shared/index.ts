@@ -21,3 +21,6 @@ export {
 export type { WaitPolicy } from './wait-policy.js';
 
 export type { DeviceType, RunId } from './types.js';
+
+export { LOCATOR_STRATEGIES } from './locator-type.js';
+export type { Locator, LocatorStrategy } from './locator-type.js';

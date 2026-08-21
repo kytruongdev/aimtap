@@ -54,21 +54,21 @@ Khi `find` thất bại và AI bật, Locator Resolver gọi một `healFn` (ti�
 - `src/locator/locator-resolver.ts` (mở rộng, giữ chữ ký `find` ổn định — điểm chèn self-healing ADR-004):
   - `HealFn = (ctx: { expectedLocator: string; screenName: string; pageSource: string }) => Promise<Locator | null>`.
   - `registerHealer(fn: HealFn): void` / `clearHealer(): void` — tiêm/gỡ healer lúc mở phiên (cùng pattern `registerScreenSink`, ADR-014); không có healer → hành vi Phase 1.
-  - `registerHealSink(sink: (record: HealRecord) => void): void` / `clearHealSink()` — tiêm lối đẩy `HealRecord` sang Evidence (US-7.3), cùng pattern sink để Locator KHÔNG import `evidence`.
+  - `registerHealSink(sink: (signal: HealSignal) => void): void` / `clearHealSink()` — tiêm lối đẩy `HealSignal` sang Evidence (US-7.3), cùng pattern sink để Locator KHÔNG import `evidence`.
   - Trong `find`: khi `waitForExist` thất bại và có healer + AI bật:
     - Lặp tối đa `healRetries` lần (giá trị truyền vào lúc đăng ký healer/qua closure — mặc định 3, BR-202):
       - Lấy page source hiện tại từ phiên WebdriverIO toàn cục.
       - Gọi `healFn({ expectedLocator: describeLocator(locator), screenName, pageSource })`.
-      - Kết quả `Locator` → thử live (`$`/`waitForExist` ngắn); tìm thấy → đẩy `HealRecord` qua heal sink (locator cũ→mới, screen, step) và trả phần tử (bước tiếp tục); dừng lặp.
+      - Kết quả `Locator` → thử live (`$`/`waitForExist` ngắn); tìm thấy → đẩy `HealSignal` qua heal sink và trả phần tử (bước tiếp tục); dừng lặp.
     - Hết lượt / không có healer / AI tắt → ném `AppFailure` như Phase 1 (chụp ảnh bước hỏng ở tầng Evidence). Lỗi gọi AI không làm dừng lượt chạy (BR-208).
     - Locator đã phục hồi cho chính locator đó dùng lại trong cùng lượt chạy, không gọi lại AI (BR-202) — giữ cache in-memory theo khóa locator.
-  - `HealRecord` theo interface-spec (`stepOrder`, `screen`, `expectedLocator`, `usedLocator`, `occurredAt`; đường dẫn ảnh gắn ở Evidence sau khi chụp).
-- `src/locator/index.ts`: phơi `registerHealer`, `registerHealSink`, kiểu `HealFn`, `HealRecord`.
+  - `HealSignal` = **các trường resolver BIẾT**: `{ screen, expectedLocator, usedLocator, occurredAt }`. **KHÔNG** mang `stepOrder`, `testCaseResultId`, `screenshot_path` — vì `find(locator, screenName)` giữ chữ ký ổn định (ADR-004), resolver không biết số bước; ba trường này do **Evidence enrich** (US-7.3), cùng cách `screenshot_path` được "gắn sau khi chụp". `HealSignal` là tập con của `HealEvent` (store, US-7.1).
+- `src/locator/index.ts`: phơi `registerHealer`, `registerHealSink`, kiểu `HealFn`, `HealSignal`.
 - Không thêm cạnh `locator → ai`/`locator → evidence`: mọi liên kết qua sink tiêm (ADR-014).
 
 **Acceptance Criteria (cấp code)**
 - [ ] Không có healer → `find` hỏng đúng như Phase 1 (test đơn vị, phiên WDIO giả lập).
-- [ ] Có healer: healFn trả locator định vị được → `find` trả phần tử, đẩy đúng một `HealRecord` qua sink (test đơn vị).
+- [ ] Có healer: healFn trả locator định vị được → `find` trả phần tử, đẩy đúng một `HealSignal` (screen/expectedLocator/usedLocator/occurredAt, không stepOrder) qua sink (test đơn vị).
 - [ ] Lặp tối đa `healRetries` lần khi các lần trả locator không tìm thấy; hết lượt → ném `AppFailure` (test đơn vị đếm số lần gọi).
 - [ ] Locator đã phục hồi được dùng lại, không gọi lại healFn cho cùng locator (test đơn vị).
 - [ ] Locator không import `ai`/`evidence`/`runner`; `make lint` xanh (ranh giới).

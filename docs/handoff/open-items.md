@@ -8,6 +8,20 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
+### CẦN TEAM-LEAD LÀM RÕ: nguồn `stepOrder` trong `HealRecord` mà Locator Resolver đẩy (US-7.2, TICKET-037) — *đã xử lý (Team Lead, 2026-08-21)*
+Dev phát hiện mâu thuẫn: interface-spec §Evidence onHeal + sequence §1 dòng 25 bắt resolver đẩy `HealRecord` gồm `stepOrder`, nhưng `find(locator, screenName)` giữ chữ ký ổn định (ADR-004) nên resolver không biết `stepOrder`.
+
+**Chốt Team Lead — PA1 (Evidence enrich), với cơ chế chính xác hơn phrasing gốc:**
+- Resolver đẩy `HealSignal = { screen, expectedLocator, usedLocator, occurredAt }` — chỉ các trường nó biết. Giữ `find()` ổn định, KHÔNG thêm step sink. Bác PA2 (step sink) vì đẻ cơ chế thừa — Evidence đã ở ranh giới bước.
+- **Verify code `evidence-collector.ts`:** `onStepEnd` chỉ nhận `step.order` ở **cuối** bước, không giữ biến "bước hiện tại"; heal xảy ra **giữa** bước (trước `onStepEnd`). Nên KHÔNG lấy "current step qua onStepEnd" (ra bước N‑1). Cơ chế đúng: `onHeal` **buffer** signal → `onStepEnd(N)` **gán `N`** cho heal buffer từ sau bước trước → đúng bước đang chạy khi heal. `onScenarioEnd` điền `test_case_result_id` + `screenshot_path` (sau chụp) + save `saveHealEvents` cùng giao dịch.
+- **Nơi đặt kiểu:** Evidence khai kiểu param `onHeal` của riêng nó (structural), Locator khai `HealSignal` của riêng nó; assembly (US-7.5) bắc cầu — không cạnh chéo, không hoist `shared`, không cần SA (giống cách bắc cầu `Screenshotter` Phase 1).
+- Đã cập nhật TICKET-037 (US-7.2: `HealSignal` tập con, không stepOrder) + TICKET-038 (US-7.3: buffer + gán stepOrder tại onStepEnd + enrich lúc onScenarioEnd + AC gán đúng bước). Dev hoàn tất TICKET-037 theo đó. TICKET-045/036 đã xong + gate xanh (231/231).
+
+### CẦN SA ĐỒNG BỘ (không chặn): interface-spec §Evidence onHeal + sequence §1 ghi resolver đẩy `stepOrder` — *đã xử lý (SA, 2026-08-21)*
+Hệ quả của quyết định PA1 ở trên. `interface-spec.md` §Evidence Collector định nghĩa `HealRecord = { testCaseResultId?, stepOrder, screen, expectedLocator, usedLocator, occurredAt }` là **resolver đẩy** — nhưng ADR-004 (find giữ chữ ký ổn định) khiến resolver KHÔNG thể biết `stepOrder`. Bản hiện thực (TL chốt): resolver đẩy **tập con** `HealSignal` (screen/expectedLocator/usedLocator/occurredAt); Evidence enrich `stepOrder` (gán tại `onStepEnd`), `testCaseResultId`, `screenshot_path` — cùng loại "Evidence điền" như `testCaseResultId?`/ảnh vốn đã mô tả.
+
+**Đánh giá + đồng bộ (SA, 2026-08-21):** Quyết định PA1 của Team Lead giải một **mâu thuẫn nội tại trong chính artifact SA** — interface-spec bắt resolver đẩy `stepOrder`, còn ADR-004 (Accepted, đã được US-2.1/`find` đã merge dựa vào) khiến resolver KHÔNG thể biết `stepOrder`. Giải theo hướng ADR-004 (ràng buộc nền tảng hơn) là đúng; cơ chế sink (ADR-014) giữ nguyên; kiểu khai structural mỗi module + assembly bắc cầu (tiền lệ `Screenshotter` Phase 1) KHÔNG thêm cạnh `locator → evidence` vào ma trận phụ thuộc, KHÔNG cần hoist `shared` (khác ca `Locator`/ADR-027 vốn có cạnh import thật). ⇒ **không chạm khuôn khổ, không cần ADR mới.** Đã đồng bộ 4 chỗ: interface-spec §Locator (payload `HealSignal` tập con + `registerHealSink` + neo ADR-004) và §Evidence (`onHeal(signal)` → enrich thành `HealEvent`); `sequence-diagrams.md` §1 dòng 25 + ghi chú phân định payload đẩy vs sau-enrich; `component-design.md` §Evidence (`onHeal(healSignal)` + enrich). `erd.md` đã đúng, không đổi. Grep `docs/architecture/` sạch `HealRecord`.
+
 ### CẦN TEAM-LEAD LÀM RÕ: va chạm target Makefile `setup` (US-6.3, TICKET-032) — *đã xử lý (Team Lead, 2026-08-21)*
 Phát hiện lúc implement US-6.3: Makefile Phase 1 đã có `setup: npm ci`, còn TICKET-032 lại trao `setup` cho `aimtap setup`.
 

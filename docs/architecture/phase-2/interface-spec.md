@@ -22,15 +22,18 @@ Công tắc AI (BR-209) KHÔNG là phương thức của `CodeAgent`. Tầng l�
 ## Interface nội bộ: Locator Resolver — tiêm healer
 **Mục đích:** Cho phép tự phục hồi mà không để Locator Resolver phụ thuộc AI Gateway (tránh chu trình; cùng pattern sink ADR-014).
 **Đầu vào / đầu ra:**
-- `registerHealer(healFn: HealFn): void` — tầng lắp ráp tiêm lúc mở phiên.
+- `registerHealer(healFn: HealFn, retries?): void` — tầng lắp ráp tiêm lúc mở phiên; `retries` từ `AppConfig.ai.healRetries`.
 - `HealFn = (ctx: { expectedLocator, screenName, pageSource }) => Promise<Locator | null>`.
-- Khi `find` thất bại và có healer + AI bật: lặp gọi `healFn` tối đa N lần (mặc định 3, BR-202), thử live mỗi kết quả; thành công → đẩy `HealRecord` sang Evidence và trả phần tử; hết lượt → hỏng như Phase 1.
+- `registerHealSink(sink: (signal: HealSignal) => void): void` — tiêm lối đẩy sang Evidence (cùng pattern sink ADR-014, để Locator Resolver KHÔNG phụ thuộc Evidence).
+- `HealSignal = { screen, expectedLocator, usedLocator, occurredAt }` — chỉ các trường Resolver biết. `find(locator, screenName)` giữ chữ ký ổn định (ADR-004) nên Resolver KHÔNG biết `stepOrder`, `testCaseResultId`, `screenshotPath`; ba trường đó do Evidence enrich. `HealSignal` là tập con của `HealEvent` (Result Store).
+- Khi `find` thất bại và có healer + AI bật: lặp gọi `healFn` tối đa N lần (mặc định 3, BR-202), thử live mỗi kết quả; thành công → đẩy `HealSignal` qua heal sink và trả phần tử; hết lượt → hỏng như Phase 1.
 **Liên quan:** UC-201. **Business rule:** BR-201, BR-202, BR-208.
 
 ## Interface nội bộ: Evidence Collector — ghi nhận tự phục hồi
 **Mục đích:** Nhận một lần tự phục hồi, chụp ảnh phần tử đã thao tác, ghi vào bản ghi lượt chạy.
-**Đầu vào / đầu ra:** `onHeal(record: HealRecord): void` — kích hoạt chụp ảnh (ngoài đường chờ của bước, NFR-10) và giữ để ghi `heal_event` theo giao dịch ở cuối test case.
-`HealRecord = { testCaseResultId?, stepOrder, screen, expectedLocator, usedLocator, occurredAt }` (đường dẫn ảnh gắn sau khi chụp).
+**Đầu vào / đầu ra:** `onHeal(signal: HealSignal): void` — nhận payload Resolver đẩy (tập con), buffer nó và kích hoạt chụp ảnh phần tử (ngoài đường chờ của bước, NFR-10).
+Evidence enrich `HealSignal` thành `HealEvent`: gán `stepOrder` tại `onStepEnd(N)` (heal xảy ra giữa bước, trước `onStepEnd`, nên số bước chỉ biết khi bước kết thúc); điền `testCaseResultId` và `screenshotPath` (sau khi chụp) tại `onScenarioEnd`, rồi `saveHealEvents` cùng giao dịch với `saveTestCaseResult`.
+`HealEvent = { testCaseResultId, stepOrder, screen, expectedLocator, usedLocator, screenshotPath?, occurredAt }` — khớp bảng `heal_event` (`erd.md`).
 **Liên quan:** UC-201. **Business rule:** BR-205, BR-206.
 
 ## Interface nội bộ: Result Store — heal_event
