@@ -22,6 +22,8 @@ export interface LaunchTarget {
   buildPath: string;
   deviceType: DeviceType;
   deviceId: string;
+  /** Per-app AI switch (US-6.1); passed to the worker via env so `runner` needs no `registry` edge. */
+  ai: { enabled: boolean; healRetries: number };
 }
 
 export type ScopeKind = 'full_suite' | 'subset';
@@ -90,6 +92,9 @@ export function buildRunEnv(
     AIMTAP_DEVICE_NAME: target.deviceId,
     AIMTAP_PLATFORM_VERSION: deviceContext.os_version,
     AIMTAP_APP_PATH: target.buildPath,
+    // Per-app AI switch (US-7.5): the worker reads these to decide whether to wire self-healing.
+    AIMTAP_AI_ENABLED: target.ai.enabled ? '1' : '0',
+    AIMTAP_AI_HEAL_RETRIES: String(target.ai.healRetries),
   };
   if (target.deviceType === 'real') {
     env.AIMTAP_UDID = target.deviceId;
