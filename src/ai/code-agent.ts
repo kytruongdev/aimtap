@@ -60,17 +60,22 @@ export function withControlPoint(inner: CodeAgent, limits: AgentLimits): CodeAge
  * Build the AI Gateway: pick the adapter for the configured CLI (only Claude Code for now), load the
  * CLI token from the environment (ADR-026), and wrap the adapter in the control point. The app-level
  * AI switch is read by the assembly layer (US-7.5) / generate command (US-8.2), not here, so `ai`
- * never depends on `registry`.
+ * never depends on `registry`. `cwd` (optional, additive) sets the CLI's working directory so
+ * limited-write generate output lands in apps/<app-id>/; heal omits it and keeps the parent cwd.
  */
-export function createCodeAgent(opts: { cli: 'claude-code'; limits: AgentLimits }): CodeAgent {
+export function createCodeAgent(opts: {
+  cli: 'claude-code';
+  limits: AgentLimits;
+  cwd?: string;
+}): CodeAgent {
   const token = loadCliToken();
-  const adapter = adapterFor(opts.cli, token);
+  const adapter = adapterFor(opts.cli, token, opts.cwd);
   return withControlPoint(adapter, opts.limits);
 }
 
-function adapterFor(cli: 'claude-code', token: string | null): CodeAgent {
+function adapterFor(cli: 'claude-code', token: string | null, cwd?: string): CodeAgent {
   switch (cli) {
     case 'claude-code':
-      return createClaudeCodeAdapter({ token });
+      return createClaudeCodeAdapter({ token, cwd });
   }
 }

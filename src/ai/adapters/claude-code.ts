@@ -31,11 +31,15 @@ export type SpawnFn = (input: {
   args: string[];
   stdin: string;
   env: NodeJS.ProcessEnv;
+  /** Working directory for the child; undefined keeps the parent cwd. */
+  cwd?: string;
 }) => Promise<SpawnResult>;
 
 export function createClaudeCodeAdapter(opts: {
   token: string | null;
   spawnFn?: SpawnFn;
+  /** Directory the CLI runs in, so limited-write output lands there (generate: apps/<app-id>/). */
+  cwd?: string;
 }): CodeAgent {
   const runProcess = opts.spawnFn ?? defaultSpawn;
 
@@ -48,7 +52,13 @@ export function createClaudeCodeAdapter(opts: {
       const env: NodeJS.ProcessEnv = { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: opts.token };
 
       try {
-        const { code, stdout } = await runProcess({ command: CLI_COMMAND, args, stdin: prompt, env });
+        const { code, stdout } = await runProcess({
+          command: CLI_COMMAND,
+          args,
+          stdin: prompt,
+          env,
+          cwd: opts.cwd,
+        });
         if (code !== 0) return null;
 
         const parsed = cliOutputSchema.safeParse(JSON.parse(stdout) as unknown);
@@ -62,9 +72,9 @@ export function createClaudeCodeAdapter(opts: {
 }
 
 /** Real subprocess call — device/tool-touching, verified manually (not unit-tested). */
-const defaultSpawn: SpawnFn = ({ command, args, stdin, env }) =>
+const defaultSpawn: SpawnFn = ({ command, args, stdin, env, cwd }) =>
   new Promise<SpawnResult>((resolve, reject) => {
-    const child = spawn(command, args, { env, stdio: ['pipe', 'pipe', 'ignore'] });
+    const child = spawn(command, args, { env, cwd, stdio: ['pipe', 'pipe', 'ignore'] });
     let stdout = '';
 
     child.stdout.setEncoding('utf8');

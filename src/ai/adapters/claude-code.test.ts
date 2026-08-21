@@ -3,7 +3,7 @@ import { createClaudeCodeAdapter, type SpawnFn, type SpawnResult } from './claud
 
 /** A fake spawn that records its input and returns a canned result. */
 function fakeSpawn(result: SpawnResult) {
-  const calls: Array<{ command: string; args: string[]; stdin: string; env: NodeJS.ProcessEnv }> = [];
+  const calls: Array<Parameters<SpawnFn>[0]> = [];
   const spawnFn: SpawnFn = async (input) => {
     calls.push(input);
     return result;
@@ -33,6 +33,24 @@ describe('createClaudeCodeAdapter', () => {
     expect(calls[0]?.args).toEqual([
       '-p', '--output-format', 'json', '--permission-mode', 'acceptEdits', '--allowedTools', 'Write Edit',
     ]);
+  });
+
+  it('runs the CLI in the given cwd so limited-write output lands there (generate)', async () => {
+    const { spawnFn, calls } = fakeSpawn({ code: 0, stdout: '{"result":"file"}' });
+    const adapter = createClaudeCodeAdapter({ token: 'tok', spawnFn, cwd: 'apps/demo' });
+
+    await adapter.invoke('generate', 'p');
+
+    expect(calls[0]?.cwd).toBe('apps/demo');
+  });
+
+  it('leaves cwd undefined when none is given (heal keeps the parent cwd)', async () => {
+    const { spawnFn, calls } = fakeSpawn({ code: 0, stdout: '{"result":"loc"}' });
+    const adapter = createClaudeCodeAdapter({ token: 'tok', spawnFn });
+
+    await adapter.invoke('heal', 'p');
+
+    expect(calls[0]?.cwd).toBeUndefined();
   });
 
   it('injects the token into the child environment', async () => {
