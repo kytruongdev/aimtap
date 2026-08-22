@@ -21,7 +21,7 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 | EP-07 | [CORE] | Nhận báo cáo PNG/PDF của mỗi lượt chạy ở định dạng đính được vào Jira. | 1 |
 | EP-08 | [CORE] | Đính báo cáo vào task Jira và cập nhật trạng thái pass/fail. | 1 |
 | EP-09 | [NICE] | Chọn tập con test case để chạy thay vì chạy toàn bộ test suite. | 1 |
-| EP-11 | [CORE] | Sinh test case từ mô tả bằng lời và page source của màn hình đích thông qua Claude. | 2 |
+| EP-11 | [CORE] | Sinh test case từ mô tả bằng lời; AI tự lái app khám phá để lấy locator, thông qua Claude. | 2 |
 | EP-12 | [CORE] | Xác nhận test case thực hiện đúng điều đã mô tả, bằng cách đọc phần mô tả hành vi bằng ngôn ngữ tự nhiên, không cần đọc phần cài đặt. | 2 |
 | EP-13 | [CORE] | Tự phục hồi test case khi một locator không tìm thấy lúc chạy, thay vì dừng test case giữa chừng. | 2 |
 | EP-14 | [CORE] | Xem mỗi lần tự phục hồi trong báo cáo (kèm locator cũ→mới và ảnh phần tử AI đã dùng) để đánh giá AI đoán đúng không. | 2 |

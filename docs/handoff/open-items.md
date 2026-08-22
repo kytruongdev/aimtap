@@ -8,6 +8,39 @@ Từ vựng trung tâm (test suite, test feature, test case, bước) định ng
 
 ## Đang mở
 
+### CẦN TEAM-LEAD RE-TICKET: use-case generate — AI tự lái app khám phá để lấy locator (bỏ dump page source tay) — *đã xử lý (Team Lead, 2026-08-22); PO định hướng + BA re-settle + SA thiết kế xong*
+**Bối cảnh:** PO định hướng mở rộng bước `generate`. Hiện (spec B đã ratify): QC cung cấp **DESC** (mô tả ngắn) + **PAGE** (page source một màn, **dump tay** bằng Appium Inspector); AI viết `.feature` + steps + screen. **Hướng mới:** QC **chỉ** cung cấp DESC; **bỏ PAGE dump tay** — thay bằng AI **tự lái một phiên Appium sống** đi theo kịch bản nó viết, inspect từng màn lấy locator. Ba việc của AI: (1) viết `.feature` từ DESC, (2) viết code (steps + Page Object) với locator lấy từ khám phá, (3) heal lúc chạy. Sau khi tạo, test **chạy tất định như cũ** (KHÔNG đổi mô hình run; KHÔNG đổi heal ADR-024).
+
+**Delta thực chất nhỏ:** `.feature` do AI viết từ DESC **vốn đã đúng như hiện tại**; điều duy nhất đổi là **nguồn locator** — từ "page source tĩnh người dump tay" → "AI khám phá app sống". Phân vai người/máy đổi tương ứng: người **không còn dump page source**, chỉ đưa DESC + review + PR.
+
+**BA đã re-settle (2026-08-22):** bỏ đầu vào PAGE (dump tay) khỏi nhánh sinh test case; người chỉ đưa DESC; AI tự lái phiên thiết bị sống khám phá lấy locator. Đã sửa: `use-cases.md` UC-203 (tiền điều kiện app+phiên sống+dữ liệu test; luồng chính bước 1–2; luồng ngoại lệ E3 khám phá không đi hết kịch bản; flowchart), `user-stories.md` US-206, `srs.md` FR-GEN-01 + giả định §3 (mở rộng bề mặt lộ dữ liệu — PO chấp nhận), `business-rules.md` BR-211 + state diagram; tài liệu nền `brd.md` (§5/§6/§7/AS-02 + dòng tham chiếu Appium MCP) + `epic-map.md` EP-11; `change-log.md` 2026-08-22. **Điểm PO đã chốt:** phiên khám phá dùng dữ liệu test của app (kể cả nhánh bí mật) để tiến bước. Không đổi: AI viết `.feature`, mô hình run tất định, heal.
+
+**Hệ quả SA (mình giữ):** viết ADR (Proposed) — **generate = agentic** (AI cầm công cụ điều khiển thiết bị qua Appium MCP: xem page source, tap/type, tiến màn; tự chọn locator ổn định); **heal = giữ ADR-024** (chỉ-đọc, một-lần, trả locator — không agentic). Điểm kiểm soát ở nền tảng: chỉ ghi trong `apps/<app-id>/`, giới hạn thời gian/lượt, kiểm qua cổng chất lượng; an toàn đến từ người review + chạy-tới-xanh (US-8.3), không từ trói AI. Reconcile **ADR-025**: seam `CodeAgent` nhận hai kiểu — generate (phiên agent có công cụ MCP) và heal (`invoke` một-lần). **Hệ quả chấp nhận:** nhánh generate gắn chặt hơn với Claude Code (agentic + MCP) → seam "chừa chỗ cho CLI thứ hai" (ADR-025 D) khó hơn ở nhánh này. Grounded: Appium MCP server tồn tại (`appium/appium-mcp`); pattern "AI explore → sinh locator → author test, không cần Inspector".
+
+**Không chặn:** onboarding §2.5 giữ nguyên (dump tay bằng Inspector) tới khi hướng này land; KHÔNG sửa doc thành "máy làm" khi lệnh chưa có.
+
+**SA (2026-08-22) — XONG:** ADR-028 **Accepted** (PO tạm duyệt); 2 gap đã vá (lộ dữ liệu khám phá; E3). Thiết kế chi tiết đã reconcile sang mô hình agentic: `phase-2/component-design.md` (§AI Gateway/§CLI Entry), `phase-2/interface-spec.md` (§CodeAgent: `invoke` cho heal + `runGenerateSession` cho generate; `generateTestCase` bỏ `pageSource`), `phase-2/sequence-diagrams.md §2`, `north-star.md §2/§4` (thêm Appium MCP), `adr-025.md §Hệ quả` (con trỏ), change-log.
+
+**Team Lead (2026-08-22) — XONG re-ticket.** Chẻ lại theo ADR-028 + interface-spec §CodeAgent + component-design §AI Gateway/§CLI Entry + sequence §2:
+- **US-8.1** (agentic) rewrite: **TICKET-049 mới** = transport `runGenerateSession(opts:{prompt,mcp,writeDir,limits})` trong `code-agent.ts` + adapter `claude-code.ts` (`--mcp-config`, `--add-dir`/cwd = writeDir, `acceptEdits`); **TICKET-042** rewrite = generate-invoker + prompt agentic, `generateTestCase(ctx:{description,existingSteps,mcp,writeDir})` bỏ `pageSource`, gọi `runGenerateSession`. Heal `invoke` KHÔNG đổi.
+- **US-8.2** (agentic) rewrite: **TICKET-043** = lệnh `generate` bỏ `--page-source`, dựng cấu hình Appium MCP từ `AppConfig` capabilities, truyền `mcp`+`writeDir=apps/<appId>/`.
+- **US-6.6 mới** (EPIC-6): **TICKET-050** doctor kiểm Appium MCP server (cảnh báo, không chặn run); **TICKET-051** setup chuẩn bị Appium MCP server. Package pin theo north-star §4.
+- **US-6.5** sửa: TICKET-048 `make generate` bỏ `PAGE`; TICKET-047 bước 4(e) bỏ hướng dẫn dump page source.
+- Board cập nhật: 14 US → 24 ticket (028→051); trạng thái + phụ thuộc + trình tự re-work. US-8.3 không đổi (không dính page source).
+- **Không tự sửa `docs/onboarding-a-new-app.md`** (còn tả PAGE) — theo ràng buộc "không chặn" ở trên: chỉ sửa khi ticket land (đưa vào DoD US-8.2/US-6.6). `docs/architecture/app-onboarding-workflow.md` là của SA (đã ở ADR-028).
+- Không điểm nào chạm khuôn khổ ở tầng ticket (đổi hợp đồng transport + thêm Appium MCP đã do SA chốt ADR-028). Một doc-drift nhỏ trong interface-spec đã flag cho SA (mục ngay dưới, không chặn).
+
+### CẦN SA ĐỒNG BỘ (không chặn): interface-spec §CodeAgent — `invoke` chữ ký lệch giữa dòng transport và dòng heal-invoker — *Team Lead phát hiện lúc re-ticket US-8.x, 2026-08-22*
+Sau ADR-028 (generate rời `invoke` sang `runGenerateSession`), `invoke` chỉ còn phục vụ heal. Trong `phase-2/interface-spec.md`:
+- **Dòng 8** (§CodeAgent transport): `invoke(prompt: string): Promise<string | null>` — **không** tham số `mode`.
+- **Dòng 16** (§heal-invoker): `healLocator` "gọi `invoke('heal', ...)`" — **còn** truyền `'heal'`.
+
+Bản merged (US-6.2) hiện thực `invoke(mode: 'heal'|'generate', prompt)`; sau re-work, `'generate'` biến mất khỏi mọi call site nên `mode` thành tham số một-giá-trị (vestigial). Hai dòng interface-spec mâu thuẫn nhau về việc `invoke` còn `mode` hay không.
+
+**Team Lead giữ (không tự quyết vì chạm chữ ký transport merged, chạm heal US-7.2):** re-work US-8.1 **không** đụng `invoke` (chỉ thêm `runGenerateSession`), để tránh churn chéo sang heal đã merge. Nếu SA muốn `invoke(prompt)` (dòng 8) là hợp đồng cuối → cần một bước bỏ `mode` ở transport + sửa call site `healLocator` (US-7.2); Team Lead đưa vào một ticket dọn dẹp khi SA chốt. Nếu giữ `mode`, sửa dòng 8 hoặc dòng 16 cho khớp. Không chặn re-ticket/hiện thực generate.
+
+**Điểm sync thứ hai (cùng chủ đề, không chặn):** ADR-028 §Hệ quả cho phép **thêm kiểm Appium MCP server vào `make setup`/`make doctor`** (nền tảng cần MCP cho generate), nhưng `phase-2/component-design.md` §CLI Entry (l.51–52 setup/doctor) và `phase-2/sequence-diagrams.md §3` **chưa** tả bước kiểm này (mới chỉ tả kiểm AI CLI + token). Team Lead đã chẻ **US-6.6** (TICKET-050 doctor + TICKET-051 setup) theo thẩm quyền ADR-028 §Hệ quả. SA sync component-design §CLI Entry + sequence §3 (thêm dòng kiểm Appium MCP, warn-only) khi tiện — không chặn.
+
 ### CẦN TEAM-LEAD LÀM RÕ: hướng dẫn thư mục đích `apps/<app-id>/` cho CLI khi sinh file (US-8.2, TICKET-043) — *đã xử lý (Team Lead, 2026-08-21)*
 Dev phát hiện: cơ chế sinh (US-8.1 merged) để `claude` (`acceptEdits`/`Write Edit`) tự ghi file **theo cwd** rồi trả `draftPaths`; prompt/`GenerateContext` không mang thư mục đích → không gì đảm bảo file rơi vào `apps/<app-id>/`. Ba PA Dev nêu: PA1 (chèn vào description — bẩn), PA2 (đổi prompt/`GenerateContext` mang `targetDir` — chạm interface merged), PA3 (người tự di chuyển file lúc review).
 

@@ -5,15 +5,16 @@ Chữ ký dưới đây là hợp đồng ở mức interface; kiểu chi tiết
 ## Interface nội bộ: CodeAgent (AI Gateway) — transport
 **Mục đích:** Điểm duy nhất gọi AI CLI, ở mức vận chuyển. Là nơi đặt điểm kiểm soát: hạn mức số lần gọi trên một lượt chạy và timeout mỗi lần; **không bao giờ ném** — trả `null` khi lỗi/timeout/vượt hạn/thiếu token (BR-208, NFR-204).
 **Đầu vào / đầu ra:**
-- `invoke(mode: 'heal' | 'generate', prompt: string): Promise<string | null>` — spawn `claude -p --output-format json` với quyền theo `mode` (heal read-only; generate ghi giới hạn), đưa `prompt` qua stdin, trả trường `result` (chuỗi) hoặc `null`.
-- Điểm kiểm soát `withControlPoint(inner, limits)` bọc adapter; factory `createCodeAgent({ cli, limits })` chọn adapter theo CLI (giai đoạn này `claude-code`).
+- **Heal (một-lần, read-only):** `invoke(prompt: string): Promise<string | null>` — spawn `claude -p --output-format json` read-only, đưa `prompt` qua stdin, trả trường `result` (chuỗi) hoặc `null`.
+- **Generate (phiên agent, ADR-028):** `runGenerateSession(opts: { prompt, mcp, writeDir, limits }): Promise<{ draftFiles: string[] } | null>` — spawn `claude -p` với **Appium MCP** (`opts.mcp`: công cụ điều khiển phiên thiết bị sống) + quyền ghi giới hạn trong `opts.writeDir` (`apps/<app-id>/`); AI tự lái app theo `prompt`, viết file nháp; trả danh sách file nháp hoặc `null`.
+- Điểm kiểm soát `withControlPoint(inner, limits)` bọc cả hai; factory `createCodeAgent({ cli, limits })` chọn adapter theo CLI (giai đoạn này `claude-code`).
 **Liên quan:** UC-201, UC-203. **Business rule:** BR-208, BR-219, NFR-202/204.
 
 ## Interface nội bộ: heal-invoker / Script Generator (dựng trên CodeAgent)
 **Mục đích:** Tầng nghiệp vụ dựng prompt và parse kết quả, trên `CodeAgent.invoke`.
 **Đầu vào / đầu ra:**
 - `healLocator(agent: CodeAgent, ctx: { expectedLocator, screenName, pageSource }): Promise<Locator | null>` (US-7.2) — dựng prompt heal, gọi `invoke('heal', ...)`, parse `result` qua Zod (`{ strategy, selector }`) → dựng `Locator` (kiểu ở `shared`, ADR-027); sai định dạng/`null` → `null`. Không sửa file.
-- `generateTestCase(agent: CodeAgent, ctx: { description, pageSource }): Promise<GenerateOutcome>` (US-8.1) — dựng prompt sinh (kèm danh sách step definition hiện có, BR-212), gọi `invoke('generate', ...)`, sinh file nháp + đánh dấu do AI sinh (FR-GEN-05).
+- `generateTestCase(agent: CodeAgent, ctx: { description, existingSteps, mcp, writeDir }): Promise<GenerateOutcome>` (US-8.1, ADR-028) — dựng prompt sinh (mô tả + danh sách step definition hiện có để tái dùng, BR-212, + hướng dẫn viết theo convention), gọi `runGenerateSession` (AI tự lái thiết bị qua `mcp` lấy locator, KHÔNG nhận `pageSource`), trả file nháp + đánh dấu do AI sinh (FR-GEN-05).
 **Liên quan:** UC-201, UC-203. **Business rule:** BR-201, BR-202, BR-211, BR-212.
 
 ## Bật/tắt AI theo app
@@ -47,7 +48,7 @@ Evidence enrich `HealSignal` thành `HealEvent`: gán `stepOrder` tại `onStepE
 **Mục đích:** Lấy locator thay thế (heal) hoặc sinh test case, bằng cách gọi CLI thật (ADR-025), auth bằng token thuê bao trong env (ADR-026).
 **Request gửi đi:** spawn `claude -p --output-format json` với `--permission-mode`/`--allowedTools` theo chế độ:
 - *Heal (read-only):* quyền chỉ đọc; prompt (qua stdin) gồm page source + locator đã hỏng + tên màn hình, yêu cầu **chỉ trả về một locator** theo định dạng cố định.
-- *Generate:* quyền ghi giới hạn; prompt gồm mô tả + page source + danh sách step definition hiện có, yêu cầu sinh file nháp.
+- *Generate (agentic, ADR-028):* thêm `--mcp-config` (Appium MCP điều khiển thiết bị sống) + quyền ghi giới hạn trong `apps/<app-id>/`; prompt gồm mô tả + danh sách step definition hiện có + hướng dẫn viết theo convention. AI **tự lấy page source qua MCP** khi đi qua từng màn — KHÔNG nhận page source tĩnh.
 Môi trường tiến trình con mang token CLI (ADR-026).
 **Response nhận về:** một JSON object trên stdout; nền tảng lấy trường `result`, rồi:
 - *Heal:* Zod parse `result` thành `{ strategy, selector }` → dựng `Locator`; sai định dạng → coi như không suy được (không áp dụng).
