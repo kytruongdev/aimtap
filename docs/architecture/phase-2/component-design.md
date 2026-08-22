@@ -7,13 +7,13 @@ Các module Phase 1 giữ nguyên trách nhiệm; dưới đây chỉ mô tả m
 ---
 
 ## AI Gateway (`src/ai/`) — mới
-**Trách nhiệm:** Điểm duy nhất nền tảng gọi AI. Đóng gói việc gọi một AI CLI ngoài qua subprocess, là nơi đặt công tắc bật/tắt AI theo app, giới hạn số lần gọi trên một lượt chạy, timeout mỗi lần gọi, và là nơi duy nhất page source rời máy.
+**Trách nhiệm:** Điểm duy nhất nền tảng gọi AI. Đóng gói việc gọi một AI CLI ngoài qua subprocess, là nơi đặt công tắc bật/tắt AI theo app, giới hạn số lần gọi trên một lượt chạy, timeout mỗi lần gọi, và là nơi duy nhất dữ liệu app (page source, nội dung màn) rời máy tới AI. Hai hình dạng gọi (ADR-025/028): **heal** = một-lần read-only (`invoke`); **generate** = **phiên agent** có công cụ Appium MCP điều khiển thiết bị sống + quyền ghi giới hạn trong `apps/<app-id>/`.
 **Cấu trúc bên trong:**
 - `code-agent.ts` — port `CodeAgent` (hợp đồng "gọi AI CLI") + factory chọn adapter theo CLI cấu hình. Điểm kiểm soát (on/off, hạn mức, timeout).
-- `adapters/claude-code.ts` — adapter subprocess: dựng lệnh `claude -p --output-format json` với `--allowedTools`/`--permission-mode` theo chế độ gọi, đưa prompt qua stdin, đọc stdout, tách trường `result`.
+- `adapters/claude-code.ts` — adapter subprocess: dựng lệnh `claude -p --output-format json` với `--allowedTools`/`--permission-mode` theo chế độ gọi. **Heal:** read-only, prompt qua stdin, tách trường `result`. **Generate (ADR-028):** thêm `--mcp-config` (Appium MCP) + quyền ghi giới hạn (`--add-dir apps/<app-id>`), AI tự lái thiết bị qua công cụ MCP và ghi file nháp.
 - `prompts/` — nội dung prompt (heal, generate) tách khỏi mã gọi.
 - `heal-invoker.ts` — chế độ read-only: dựng prompt heal, gọi `CodeAgent`, parse `result` qua Zod thành một `Locator`. Không cho CLI sửa file.
-- `generate-invoker.ts` (Script Generator) — chế độ sinh: gọi CLI sinh file nháp test case, gửi kèm danh sách step definition hiện có và ưu tiên tái dùng trước khi sinh step mới (ADR-007, BR-212); gắn nhãn "do AI sinh" vào test case sinh ra (ví dụ tag `@ai-generated` trên scenario) để phân biệt khi rà soát (FR-GEN-05, BR-216).
+- `generate-invoker.ts` (Script Generator) — chế độ sinh (agentic, ADR-028): mở phiên agent để AI **tự lái thiết bị qua Appium MCP** theo mô tả — đi tới từng màn, inspect lấy locator — rồi viết file nháp (`.feature` + step + Page Object). QC **không** cung cấp page source. Gửi kèm danh sách step definition hiện có, ưu tiên tái dùng trước khi sinh mới (ADR-007, BR-212); gắn nhãn "do AI sinh" (tag `@ai-generated`) để phân biệt khi rà soát (FR-GEN-05, BR-216).
 **Phụ thuộc:** Config & Secrets (công tắc AI theo app, token, CLI đã chọn), Shared, và kiểu/lược đồ `Locator` của module Locator (để parse đầu ra heal). Không phụ thuộc Locator Resolver, Test Runner (một chiều).
 **Requirement liên quan:** FR-HEAL-01, FR-GEN-01, FR-GEN-05, FR-AI-01, BR-201, BR-202, BR-216, BR-219.
 
@@ -50,7 +50,7 @@ Các module Phase 1 giữ nguyên trách nhiệm; dưới đây chỉ mô tả m
 **Cấu trúc bên trong:**
 - `commands/setup.ts` — chọn CLI → kiểm/cài CLI → hướng dẫn lấy token một lần → lưu token vào env git-ignored (ADR-026).
 - `commands/doctor.ts` (mở rộng) — thêm kiểm AI CLI có mặt + token hợp lệ; thiếu thì báo, tính năng AI không chạy, chạy test không AI vẫn hoạt động.
-- `commands/generate.ts` — nhận mô tả + page source, gọi AI Gateway sinh file nháp; QC chạy thử + xác nhận + tự mở PR (ngoài nền tảng).
+- `commands/generate.ts` — nhận **mô tả** (không còn page source); đọc `app.config.ts` dựng cấu hình **Appium MCP** (capabilities: build, thiết bị, OS — server MCP quản phiên thiết bị) rồi gọi AI Gateway chạy phiên khám phá agentic sinh file nháp (ADR-028). AI Gateway nhận cấu hình MCP từ đây → KHÔNG phụ thuộc Test Runner/Device. QC chạy thử + xác nhận + tự mở PR (ngoài nền tảng).
 **Phụ thuộc:** AI Gateway, Config & Secrets, Device (doctor host tools), Shared.
 **Requirement liên quan:** FR-ENV-01, FR-ENV-02, FR-GEN-01, UC-203, UC-205, BR-220, BR-221.
 

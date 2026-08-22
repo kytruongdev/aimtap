@@ -42,15 +42,22 @@ sequenceDiagram
 participant QC
 participant CLIcmd as CLI (generate)
 participant AI as AI Gateway
-participant CLI as AI CLI (claude -p, subprocess)
-participant Dev as Thiết bị / lượt chạy thử
+participant CLI as AI CLI (claude -p + Appium MCP)
+participant Dev as Thiết bị (phiên sống)
 
-QC->>CLIcmd: generate(mô tả + page source)
-CLIcmd->>AI: generateTestCase(mô tả, page source)
-AI->>CLI: spawn claude -p (sinh file nháp: .feature + step + Page Object)
-CLI-->>AI: JSON {result} + file nháp đã tạo
+QC->>CLIcmd: generate(mô tả)
+CLIcmd->>CLIcmd: đọc app.config → dựng cấu hình Appium MCP (capabilities)
+CLIcmd->>AI: generateTestCase(mô tả, step đã có, MCP, writeDir=apps/<id>/)
+AI->>CLI: spawn claude -p (Appium MCP + ghi giới hạn app dir)
+CLI->>CLI: viết .feature từ mô tả
+loop mỗi bước kịch bản
+  CLI->>Dev: (qua Appium MCP) getPageSource / tap để tới màn
+  Dev-->>CLI: page source
+  CLI->>CLI: chọn locator ổn định
+end
+CLI-->>AI: file nháp đã tạo (.feature + step + Page Object, @ai-generated)
 AI-->>QC: đường dẫn file nháp
-QC->>Dev: chạy thử test case nháp
+QC->>Dev: chạy thử test case nháp (make run, tất định)
 Dev-->>QC: nhật ký thực thi
 alt nhật ký khớp mô tả và đạt
   QC->>QC: xác nhận → tự mở pull request (đánh dấu do AI sinh)
@@ -60,7 +67,9 @@ end
 ```
 **Điểm thất bại & xử lý:**
 - AI tắt cho app → không sinh qua AI; QC soạn tay như Phase 1 (BR-218).
-- CLI lỗi/không phản hồi → không sinh lần này; QC thử lại hoặc soạn tay.
+- CLI / Appium MCP lỗi hoặc không phản hồi → không sinh lần này; QC thử lại hoặc soạn tay.
+- **AI khám phá không đi hết kịch bản (kẹt màn / không tìm ra đường — UC-203 E3)** → không sinh lần này; QC chỉnh mô tả + sinh lại, hoặc soạn tay.
+- Phiên khám phá gửi AI nội dung mọi màn đi qua + dùng dữ liệu test (kể cả bí mật) để tiến bước — bề mặt lộ dữ liệu rộng hơn heal, PO chấp nhận cho Phase 2 (`business/phase-2/srs.md §3`, BR-211).
 - Test case nháp có thể sai/thừa (BR-213) → bắt buộc QC chạy thử + xác nhận qua mô tả hành vi (BR-214) và chạy xanh trước khi mở PR (BR-215). Mở PR + git do **con người** làm sau review.
 
 ## 3. Cài đặt và kiểm tra môi trường AI (UC-205)

@@ -76,7 +76,7 @@ Diagram này được cập nhật mỗi khi một quyết định kiến trúc 
 | Reporter | Sinh báo cáo của một lượt chạy dạng một tệp HTML tự chứa (đính thủ công). | đọc Result Store và tệp ảnh | Result Store, Shared | 1 |
 | Config & Secrets | Cung cấp cấu hình vận hành của nền tảng, nạp bí mật (Phase 2: token AI CLI) và dữ liệu kiểm thử từ nguồn ngoài kho mã. | đọc biến môi trường, tệp cấu hình cục bộ | Shared | 1 |
 | Shared | Cung cấp hạ tầng dùng chung cho mọi module: ghi log có cấu trúc, phân cấp lớp lỗi, tham số thời gian chờ, kiểu dữ liệu chung. | — | — | 1 |
-| AI Gateway | Điểm duy nhất của nền tảng gọi AI, cho **tự phục hồi locator** và **sinh test case**: gọi một AI CLI ngoài (Claude Code) qua subprocess; đặt công tắc bật/tắt theo app, giới hạn số lần gọi, và thời gian chờ tối đa mỗi lần gọi; đánh dấu test case do AI sinh. | đọc Config & Secrets và step definition hiện có; ghi tệp nháp | Config & Secrets, Shared, kiểu Locator | 2 |
+| AI Gateway | Điểm duy nhất của nền tảng gọi AI, cho **tự phục hồi locator** và **sinh test case**: gọi một AI CLI ngoài (Claude Code) qua subprocess; **heal** = một-lần chỉ-đọc, **generate** = phiên agent có công cụ **Appium MCP** để AI tự lái thiết bị khám phá lấy locator (ADR-028); đặt công tắc bật/tắt theo app, giới hạn số lần gọi, và thời gian chờ tối đa mỗi lần gọi; đánh dấu test case do AI sinh. | đọc Config & Secrets và step definition hiện có; ghi tệp nháp | Config & Secrets, Shared, kiểu Locator | 2 |
 | Analytics | Trả lời câu hỏi về xu hướng chất lượng từ dữ liệu kết quả đã tích lũy. | đọc Result Store | Result Store, Shared | 3 |
 
 Nội dung test của một ứng dụng gồm hai phần: **mô tả hành vi** bằng ngôn ngữ tự nhiên (tệp `.feature`, mỗi tệp là một **test feature** chứa nhiều **test case**) và **cài đặt thực thi** từng câu mô tả (step definition). Cả hai phần, cùng khai báo ứng dụng và Page Object, nằm trong cùng kho mã nhưng ngoài ranh giới nền tảng. Nền tảng không tham chiếu tới bất kỳ định danh, màn hình, hay luồng nghiệp vụ nào của một ứng dụng cụ thể; quan hệ đi một chiều từ nội dung ứng dụng tới nền tảng.
@@ -329,7 +329,8 @@ Ba lớp giữ môi trường giữa các máy QC đồng nhất:
 | Lệnh vận hành | `Makefile` | — | ADR-008 |
 | Khung lệnh CLI | commander (v15, ESM-only, zero-dependency) | [commander — npm](https://www.npmjs.com/package/commander) | ADR-017 |
 | Gọi AI | AI CLI ngoài (Claude Code) qua subprocess headless `claude -p` | [Claude Code — headless](https://code.claude.com/docs/en/headless) | ADR-025, ADR-026 |
-| Lấy locator | Appium Inspector (công cụ ngoài, QC dùng thủ công) | BRD §6 | — |
+| Lấy locator (thủ công) | Appium Inspector (công cụ ngoài, QC dùng khi soạn tay) | BRD §6 | — |
+| Lấy locator (AI khám phá khi sinh test) | Appium MCP server (công cụ điều khiển thiết bị cho AI agent) | [appium/appium-mcp](https://github.com/appium/appium-mcp) | ADR-028 |
 
 ---
 
