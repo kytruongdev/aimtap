@@ -2,9 +2,9 @@
 
 Phân cấp: **Epic → User Story → Ticket** (`conventions.md`). Mỗi user story là một tệp `us-*.md` chứa ticket inline, và là một pull request; mỗi ticket là một commit. Mỗi user story link về US nghiệp vụ của BA ở field "Business US (BA)".
 
-Chẻ theo Phương án A (lát mỏng theo module, như Phase 1): **3 epic → 11 user story → 18 ticket** (TICKET-028→045), phủ US-201..210 (BA). Thiết kế: ADR-024 (heal_event + status hai giá trị), ADR-025 (subprocess `claude -p` + port `CodeAgent`), ADR-026 (token env + setup/doctor), ADR-027 (`Locator` là kiểu kernel ở `shared`); `docs/architecture/phase-2/`.
+Chẻ theo Phương án A (lát mỏng theo module, như Phase 1): **3 epic → 14 user story → 24 ticket** (TICKET-028→051), phủ US-201..210 (BA). Thiết kế: ADR-024 (heal_event + status hai giá trị), ADR-025 (subprocess `claude -p` + port `CodeAgent`), ADR-026 (token env + setup/doctor), ADR-027 (`Locator` là kiểu kernel ở `shared`), ADR-028 (generate = phiên agent qua Appium MCP); `docs/architecture/phase-2/`.
 
-**Tiến độ:** PO **đã duyệt** board (2026-08-20) — Giai đoạn N (chẻ ticket Phase 2) đóng. Toàn bộ user story ở trạng thái Todo, sẵn sàng cho Dev. Bắt đầu từ **US-6.1** + **US-7.1** (hai nền song song).
+**Tiến độ:** Core Phase 2 (US-6.1..6.3, 7.1..7.5, 8.1..8.3) **đã implement + merge** trên mô hình generate cũ (DESC + page source dump tay). **US-6.4** (setup tự cài Claude Code) — Todo. **Re-work theo ADR-028 (2026-08-22):** bước `generate` đổi sang **agentic** (QC chỉ đưa mô tả; AI tự lái app qua Appium MCP lấy locator). US-8.1/US-8.2 re-ticket sang mô hình agentic (thêm TICKET-049 transport `runGenerateSession`); thêm **US-6.6** (kiểm/cài Appium MCP server ở setup/doctor); US-6.5 bỏ `PAGE`. Các US này về trạng thái re-work — Todo.
 
 ---
 
@@ -18,6 +18,9 @@ Cấu hình AI theo app, token AI CLI, module `ai/` gọi subprocess, và lệnh
 | US-6.1 | Cấu hình AI theo app + token AI CLI | 028, 029 | US-205, US-210 |
 | US-6.2 | AI Gateway: port CodeAgent + adapter Claude Code | 030, 031 | US-201, US-206 |
 | US-6.3 | Lệnh setup + doctor kiểm AI CLI | 032, 033 | US-210 |
+| US-6.4 | `setup` tự cài Claude Code khi vắng | 046 | US-210 |
+| US-6.5 | Lệnh tiện dụng: dựng app mới + wrap generate | 047, 048 | — (DX vận hành) |
+| US-6.6 | Kiểm/cài Appium MCP server (generate agentic) | 050, 051 | US-210 |
 
 ### EPIC-7 — Tự phục hồi locator lúc chạy
 Lưu heal_event, suy luận locator qua AI + vòng thử phục hồi, ghi nhận/ảnh, hiển thị báo cáo, và lắp ráp khép mạch.
@@ -35,8 +38,8 @@ Sinh test case qua AI CLI, lệnh generate, và quy trình rà soát test AI sin
 
 | User story | Tên | Ticket | Business US (BA) |
 |---|---|---|---|
-| US-8.1 | Sinh test case qua AI CLI | 042 | US-206, US-209 |
-| US-8.2 | Lệnh generate | 043 | US-206 |
+| US-8.1 | Sinh test case qua phiên agent (agentic, Appium MCP) | 049, 042 | US-206, US-209 |
+| US-8.2 | Lệnh generate (agentic) | 043 | US-206 |
 | US-8.3 | Quy trình xác nhận & rà soát test AI sinh | 044 | US-207, US-208, US-209 |
 
 ---
@@ -45,19 +48,22 @@ Sinh test case qua AI CLI, lệnh generate, và quy trình rà soát test AI sin
 
 | User story | Phụ thuộc | Song song với | Trạng thái |
 |---|---|---|---|
-| US-6.1 | — | US-7.1 | Todo |
-| US-7.1 | — | US-6.1 | Todo |
-| US-6.2 | US-6.1 | US-6.3, US-7.1 | Todo |
-| US-6.3 | US-6.1 | US-6.2, US-7.1 | Todo |
-| US-7.3 | US-7.1 | US-6.2, US-6.3, US-7.4 | Todo |
-| US-7.4 | US-7.1 | US-7.2, US-7.3, US-8.1 | Todo |
-| US-7.2 | US-6.2 | US-7.3, US-7.4, US-8.1 | Todo |
-| US-8.1 | US-6.2 | US-7.2, US-7.3, US-7.4 | Todo |
-| US-7.5 | US-6.2, US-7.2, US-7.3 | US-8.1, US-8.2 | Todo |
-| US-8.2 | US-8.1, US-6.1 | US-7.5 | Todo |
-| US-8.3 | US-8.1 | (bất kỳ sau US-8.1) | Todo |
+| US-6.1 | — | US-7.1 | Merged |
+| US-7.1 | — | US-6.1 | Merged |
+| US-6.2 | US-6.1 | US-6.3, US-7.1 | Merged |
+| US-6.3 | US-6.1 | US-6.2, US-7.1 | Merged |
+| US-7.3 | US-7.1 | US-6.2, US-6.3, US-7.4 | Merged |
+| US-7.4 | US-7.1 | US-7.2, US-7.3, US-8.1 | Merged |
+| US-7.2 | US-6.2 | US-7.3, US-7.4, US-8.1 | Merged |
+| US-8.1 | US-6.2 | US-7.2, US-7.3, US-7.4 | Merged (mô hình cũ) → **Todo: re-work ADR-028** |
+| US-7.5 | US-6.2, US-7.2, US-7.3 | US-8.1, US-8.2 | Merged |
+| US-8.2 | US-8.1, US-6.1 | US-7.5 | Merged (mô hình cũ) → **Todo: re-work ADR-028** |
+| US-8.3 | US-8.1 | (bất kỳ sau US-8.1) | Merged (không đổi) |
+| US-6.4 | US-6.3 | US-6.5, US-6.6 | Todo |
+| US-6.5 | US-8.2 | US-6.4, US-6.6 | Todo (TICKET-048 re-work ADR-028) |
+| US-6.6 | US-6.3, US-6.4 | US-8.1, US-8.2 | Todo |
 
-**Trình tự merge đề xuất:**
+**Trình tự merge đề xuất (core — đã thực hiện, giữ làm tham chiếu):**
 1. Song song nền: **US-6.1** (cấu hình + token) và **US-7.1** (store heal_event) — độc lập, mỗi story một PR.
 2. **US-6.2** (AI Gateway core) sau US-6.1; song song **US-6.3** (setup/doctor).
 3. **US-7.3** (evidence, cần US-7.1) và **US-7.4** (status hai giá trị + báo cáo, cần US-7.1) — song song.
@@ -65,7 +71,13 @@ Sinh test case qua AI CLI, lệnh generate, và quy trình rà soát test AI sin
 5. **US-7.5** — điểm hội tụ khép mạch tự phục hồi (cần US-6.2, US-7.2, US-7.3).
 6. **US-8.2** (lệnh generate) và **US-8.3** (quy trình rà soát).
 
-Dev nên bắt đầu từ **US-6.1** và **US-7.1** (hai nền móng song song).
+**Việc còn lại — trình tự re-work agentic (ADR-028), sau khi core đã merge:**
+1. **US-8.1** re-work: TICKET-049 (transport `runGenerateSession`) trước, rồi TICKET-042 (invoker agentic).
+2. **US-8.2** re-work: lệnh `generate` bỏ `--page-source`, dựng cấu hình Appium MCP (cần US-8.1).
+3. **US-6.6**: kiểm/cài Appium MCP ở doctor/setup (song song US-8.1/8.2; cần cho `generate` chạy thật).
+4. **US-6.5** TICKET-048: `make generate` bỏ `PAGE` (cần US-8.2).
+
+Dev nên bắt đầu re-work từ **US-8.1** (TICKET-049 → TICKET-042).
 
 ## Phụ thuộc cấp ticket (trong và giữa user story)
 
@@ -86,9 +98,15 @@ Dev nên bắt đầu từ **US-6.1** và **US-7.1** (hai nền móng song song)
 | 039 | US-7.4 | 034 |
 | 040 | US-7.4 | 035, 039 |
 | 041 | US-7.5 | 037, 038, 030 |
-| 042 | US-8.1 | 031 |
+| 049 | US-8.1 | 031 |
+| 042 | US-8.1 | 049 |
 | 043 | US-8.2 | 042, 028 |
 | 044 | US-8.3 | 042 |
+| 046 | US-6.4 | 032 |
+| 047 | US-6.5 | — |
+| 048 | US-6.5 | 043 |
+| 050 | US-6.6 | 033 |
+| 051 | US-6.6 | 032, 046 |
 
 ## Ghi chú
 
@@ -100,6 +118,8 @@ Dev nên bắt đầu từ **US-6.1** và **US-7.1** (hai nền móng song song)
 - **Công tắc AI theo app** ở `AppConfig.ai` (registry, US-6.1); tầng lắp ráp (US-7.5) và lệnh generate (US-8.2) đọc rồi truyền vào AI Gateway. AI Gateway KHÔNG import `registry` (giữ dependency set component-design §AI-Gateway); đường `run` tiêm `AIMTAP_AI_ENABLED`/`AIMTAP_AI_HEAL_RETRIES` qua env (pattern `AIMTAP_*` sẵn có).
 - **Không tích hợp git/PR trong `src/`** (ADR-025, BR-210): tự phục hồi ghi locator cũ→mới vào báo cáo; sinh test gắn tag `@ai-generated` + ghi file nháp. Con người mở PR (US-8.3).
 - Phần chạm AI CLI thật (subprocess), chụp ảnh heal, và khép mạch đầu-cuối kiểm chứng thủ công trên simulator; logic quanh nó test đơn vị với giả lập (`conventions.md` §3.1).
+- **Generate agentic (ADR-028) — re-work US-8.x + US-6.6:** bước `generate` đổi từ "QC dump page source tay + AI viết từ static page source" sang "QC chỉ đưa mô tả + AI tự lái app qua **Appium MCP** lấy locator". `CodeAgent` nhận **hai hình dạng gọi**: `invoke` (heal, một-lần read-only, KHÔNG đổi) và `runGenerateSession` (generate, phiên agent có MCP + quyền ghi giới hạn `apps/<app-id>/`). `generateTestCase` bỏ `pageSource`, nhận `mcp` + `writeDir`. Lệnh `generate` bỏ `--page-source`, dựng cấu hình Appium MCP từ `AppConfig` capabilities. Đổi hợp đồng transport + thêm công cụ ngoài đã do SA chốt (ADR-028, interface-spec §CodeAgent, sequence §2) — không chạm khuôn khổ ở tầng ticket. Heal (ADR-024) và mô hình run tất định KHÔNG đổi.
+- **Appium MCP server là môi trường mới (US-6.6):** kiểm ở `doctor` (cảnh báo, không chặn run) + chuẩn bị ở `setup`. Package pin theo `north-star.md` §4 (`appium/appium-mcp`).
 
 ## Điểm đã đẩy về SA/BA
 
