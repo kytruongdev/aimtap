@@ -71,9 +71,9 @@ Tại các điểm cần AI (tự phục hồi, sinh test case), nền tảng **
 - Output: bật → cho phép gọi AI khi locator hỏng và khi QC yêu cầu sinh test case; tắt → không gọi AI, app chạy và soạn test đúng như Phase 1.
 - Business rule liên quan: BR-209, BR-218.
 
-### FR-GEN-01: Sinh test case từ mô tả và page source
-- Mô tả: Khi QC yêu cầu và AI đang bật cho app, nền tảng gọi AI CLI sinh một test case từ mô tả bằng lời của QC và page source của màn hình đích.
-- Input: mô tả bằng lời của trường hợp cần kiểm thử; page source của màn hình đích.
+### FR-GEN-01: Sinh test case từ mô tả
+- Mô tả: Khi QC yêu cầu và AI đang bật cho app, nền tảng gọi AI CLI sinh một test case từ mô tả bằng lời của QC. Để lấy locator, AI tự lái một phiên thiết bị sống đi theo kịch bản và inspect từng màn; QC không cung cấp page source.
+- Input: mô tả bằng lời của trường hợp cần kiểm thử. Điều kiện: app đã cài và có phiên thiết bị sống; dữ liệu test của app có sẵn để AI đi qua các bước cần dữ liệu.
 - Output: một test case gồm phần mô tả hành vi (ngôn ngữ tự nhiên) và phần cài đặt; locator đặt trong Page Object; ưu tiên tái dùng câu mô tả và phần cài đặt đã có.
 - Business rule liên quan: BR-211, BR-212, BR-218.
 
@@ -139,7 +139,7 @@ Phần mô tả hành vi của test case do AI sinh phải khớp với hành vi
 
 ## 3. Giả định và câu hỏi mở
 
-- `GIẢ ĐỊNH:` Dữ liệu hiển thị trên màn hình của app được kiểm thử không chứa dữ liệu thật nhạy cảm, nên page source gửi tới AI không bị giới hạn (kế thừa AS-02). Rủi ro này được chấp nhận cho Phase 2; cơ chế lọc/che dữ liệu và việc tắt AI theo từng test case vì lý do nhạy cảm để dành cho phase sau. Biện pháp hiện tại là bật/tắt AI theo app (BR-209). Áp dụng cho cả page source gửi khi tự phục hồi và khi sinh test case.
+- `GIẢ ĐỊNH:` Dữ liệu hiển thị trên màn hình của app được kiểm thử không chứa dữ liệu thật nhạy cảm, nên nội dung màn hình gửi tới AI không bị giới hạn (kế thừa AS-02). Rủi ro này được chấp nhận cho Phase 2; cơ chế lọc/che dữ liệu và việc tắt AI theo từng test case vì lý do nhạy cảm để dành cho phase sau. Biện pháp hiện tại là bật/tắt AI theo app (BR-209). Áp dụng cho hai đường: (1) page source một màn gửi khi tự phục hồi; (2) phiên khám phá khi sinh test case — trong phiên này AI thấy nội dung mọi màn nó đi qua và dùng dữ liệu test của app (kể cả nhánh bí mật, ví dụ để đăng nhập) để tiến qua các bước. Bề mặt lộ dữ liệu ở đường (2) rộng hơn Phase 1, và được Product Owner chấp nhận cho Phase 2.
 - `GIẢ ĐỊNH:` Để tự phục hồi, AI cần biết phần tử cần tìm là gì, không chỉ locator đã hỏng. Phase 2 giả định gửi AI locator đã hỏng + tên màn hình (Page Object) + page source là đủ để AI suy ra ý định, vì định danh của locator thường đã mang nghĩa (ví dụ `Login-button`). Nếu chạy thật cho thấy chưa đủ (ảnh hưởng SM-05 — tỷ lệ phục hồi thành công), bổ sung một mô tả ngắn dễ đọc cho từng locator trong Page Object. SA cân nhắc khi thiết kế phần tự phục hồi.
 - `PHẠM VI:` Giai đoạn này nền tảng dùng **một AI CLI** (Claude Code); cấu trúc để chỗ mở cho một CLI khác về sau, nhưng không xây sẵn đa-CLI. Nền tảng không quản nhà cung cấp AI — việc đó thuộc chính AI CLI.
 - `GIẢ ĐỊNH:` Người dùng là **QC automation (biết code)**; mọi thao tác qua dòng lệnh, file cấu hình và git/pull request. Nền tảng không có giao diện đồ họa ở phase này; đó là lựa chọn hợp với người dùng biết code.

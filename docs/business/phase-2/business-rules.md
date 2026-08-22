@@ -96,7 +96,7 @@ Thực thể trung tâm của phần này là một **test case do AI sinh**. V�
 
 ```mermaid
 stateDiagram-v2
-[*] --> BanNhap: QC mô tả bằng lời + page source → AI sinh
+[*] --> BanNhap: QC mô tả bằng lời → AI tự khám phá app + sinh
 BanNhap --> ChayThu: QC chạy thử trên thiết bị
 ChayThu --> CanDieuChinh: nhật ký thực thi không khớp điều đã mô tả, hoặc không đạt
 CanDieuChinh --> BanNhap: QC chỉnh mô tả và sinh lại
@@ -108,9 +108,9 @@ DaMerge --> [*]
 ```
 
 ## BR-211: Đầu vào của việc sinh test case
-- Quy tắc: AI sinh test case từ mô tả bằng lời của QC và page source của màn hình đích.
-- Lý do: Đây là hai đầu vào QC có được mà không cần viết code (EP-11).
-- Nếu vi phạm: Thiếu một trong hai đầu vào thì test case sinh ra không bám đúng màn hình hoặc không đúng ý QC.
+- Quy tắc: AI sinh test case từ mô tả bằng lời của QC. QC không cung cấp page source; để lấy locator, AI tự lái một phiên thiết bị sống đi theo kịch bản và inspect từng màn. Phiên khám phá dùng dữ liệu test của app (kể cả nhánh bí mật, ví dụ để đăng nhập) để đi qua các bước cần dữ liệu.
+- Lý do: QC chỉ cần diễn đạt trường hợp cần kiểm thử bằng lời, không phải dump page source tay (EP-11); AI cần đi qua các màn thật để lấy locator ổn định.
+- Nếu vi phạm: Thiếu mô tả thì test case sinh ra không đúng ý QC; thiếu phiên thiết bị sống hoặc dữ liệu test thì AI không đi hết kịch bản để lấy locator.
 - Áp dụng cho: UC-203.
 
 ## BR-212: Đầu ra là test case đầy đủ hai phần, ưu tiên tái dùng

@@ -111,7 +111,7 @@ flowchart LR
 | Bằng chứng thực thi có cấu trúc cho mỗi test case: trạng thái, nhật ký các bước đã chạy, và ảnh chụp tại bước hỏng — gắn vào task Jira, thay cho ảnh chụp rời rạc do QC tự lưu. | QC, Lập trình viên | Phase 1 |
 | Dữ liệu kết quả tích lũy theo từng lượt chạy, làm nền cho phân tích về sau. | QC Lead | Phase 1 |
 | Một nền tảng dùng lại được cho ứng dụng tiếp theo mà không phải dựng lại từ đầu. | QC Lead, Product Owner | Phase 1 |
-| Thời gian soạn một test case mới giảm, do AI sinh test case từ mô tả và page source. | QC | Phase 2 |
+| Thời gian soạn một test case mới giảm, do AI sinh test case từ mô tả và tự khám phá app để lấy locator. | QC | Phase 2 |
 | Chi phí AI thấp và không phải tự quản khóa hay nhà cung cấp, do dùng lại một AI CLI thuê bao cài trên máy. | QC Lead, Product Owner | Phase 2 |
 | Chi phí bảo trì test case giảm khi giao diện thay đổi, do locator hỏng được tìm lại lúc chạy thay vì làm dừng cả lượt chạy. | QC | Phase 2 |
 | Nền tảng phủ được cả ứng dụng Android, không chỉ iOS. | QC, QC Lead, Product Owner | Phase 3 |
@@ -143,8 +143,8 @@ flowchart LR
 6. Tạo pull request.
 
 ### QC — soạn một test case mới với hỗ trợ AI (Phase 2)
-1. Mô tả trường hợp cần kiểm thử bằng lời và cung cấp page source của màn hình đích.
-2. Nền tảng gọi Claude sinh test case.
+1. Mô tả trường hợp cần kiểm thử bằng lời.
+2. Nền tảng gọi Claude sinh test case; AI tự lái app khám phá để lấy locator.
 3. QC đọc phần mô tả hành vi của test case, chạy thử, đối chiếu nhật ký thực thi với điều mình mô tả, điều chỉnh và sinh lại nếu chưa đúng.
 4. QC tạo pull request.
 
@@ -183,7 +183,7 @@ flowchart LR
 - Thu thập bằng chứng thực thi cho mỗi test case: trạng thái kết quả, nhật ký các bước đã chạy kèm kết quả từng bước, và ảnh chụp màn hình tại bước hỏng.
 - Xuất báo cáo HTML tự chứa cho mỗi lượt chạy (ảnh nhúng sẵn), đính được vào Jira.
 - Ghi bản ghi kết quả dạng JSON cho mỗi test case trong mỗi lượt chạy, lưu vào SQLite trên máy QC.
-- Sinh test case qua AI từ mô tả bằng lời và page source.
+- Sinh test case qua AI từ mô tả bằng lời; AI tự khám phá app để lấy locator.
 - Đưa phần mô tả hành vi của test case tới QC để xác nhận mà không cần đọc phần cài đặt.
 - Tự phục hồi locator lúc chạy qua AI, ghi nhận mỗi lần tự phục hồi vào báo cáo.
 - Bật hoặc tắt việc gọi AI bằng cấu hình. Nền tảng dùng AI bằng cách chủ động gọi một AI CLI bên ngoài (như Claude Code).
@@ -266,7 +266,7 @@ Chỉ tiêu định lượng không được đặt trước khi triển khai. S
 | Mã | Nội dung | Ảnh hưởng nếu sai |
 |---|---|---|
 | AS-01 | Vai trò QC Lead tồn tại tách biệt với QC. | Chỉ gộp actor, không đổi nội dung epic. |
-| AS-02 | Nội dung màn hình của các ứng dụng được kiểm thử không chứa dữ liệu nhạy cảm, nên page source và ảnh chụp gửi tới Claude không bị giới hạn. | Phase 2 phải bổ sung quy tắc lọc dữ liệu trước khi gửi ra ngoài. Rủi ro này tăng khi nền tảng được dùng cho ứng dụng khác về sau. |
+| AS-02 | Nội dung màn hình của các ứng dụng được kiểm thử không chứa dữ liệu nhạy cảm, nên page source và ảnh chụp gửi tới Claude không bị giới hạn. Khi sinh test case, AI tự lái app khám phá — thấy nội dung mọi màn nó đi qua và dùng dữ liệu test của app (kể cả nhánh bí mật) để tiến bước — nên bề mặt lộ dữ liệu rộng hơn. | Phase 2 phải bổ sung quy tắc lọc dữ liệu trước khi gửi ra ngoài. Rủi ro này tăng khi nền tảng được dùng cho ứng dụng khác về sau. |
 | AS-03 | Test case được chạy theo yêu cầu do QC khởi động thủ công, không có lịch chạy tự động. | Bổ sung cơ chế lập lịch vào phạm vi. |
 | AS-04 | Mỗi QC làm việc trên một máy riêng, dữ liệu kết quả nằm cục bộ trên máy đó. Test case dùng chung qua Git, dữ liệu kết quả không dùng chung. | Ảnh hưởng cách tổng hợp dữ liệu cho lớp phân tích ở Phase 3. |
 | AS-05 | Nhật ký thực thi cung cấp đủ thông tin để điều tra một test case hỏng mà không cần ảnh chụp của các bước trước bước hỏng. | Phải chụp màn hình ở mọi bước, làm tăng thời lượng lượt chạy và ảnh hưởng SM-02. |
@@ -286,3 +286,4 @@ Các mục cần làm rõ khi mở đặc tả từng phase nằm ở `docs/hand
 | Chi phí thời gian của việc chụp màn hình trong lúc chạy Appium, và khuyến nghị chụp có chọn lọc thay vì chụp mọi bước. | [Appium Discuss — screen capture time](https://discuss.appium.io/t/help-screen-capture-function-takes-5-seconds-for-1-image/23283), [Appium Running Slow? 7 Fixes](https://devicelab.dev/blog/appium-slow-7-fixes-that-work) |
 | Chỉ số phân tích chất lượng phổ biến: tỷ lệ vượt qua theo lượt chạy, test case thiếu ổn định (xác định qua việc trạng thái đổi qua lại giữa các lượt chạy), test case hỏng nhiều nhất. | [Reporting and metrics in ReportPortal](https://reportportal.io/docs/dashboards-and-widgets/ReportingAndMetricsInReportPortal/), [Test Automation Analytics](https://testdino.com/blog/test-automation-analytics) |
 | Sinh test case bằng LLM từ mô tả bằng ngôn ngữ tự nhiên kèm page source hoặc ảnh chụp màn hình; test case biểu diễn dưới dạng các bước bằng lời để người không lập trình đọc được. | [appium-llm-plugin](https://github.com/headspinio/appium-llm-plugin), [Automating Appium Script Generation Using AI Tools](https://kobiton.com/mobile-testing-guide/mobile-test-automation/automating-appium-script-generation-using-ai-tools/), [Alumnium](https://alumnium.ai/) |
+| AI agent tự lái app khám phá qua công cụ điều khiển thiết bị: đi qua các luồng người dùng thật, đọc màn hình đang hiển thị, tự lấy locator và sinh test — không cần dump page source tay qua Inspector. | [appium/appium-mcp](https://github.com/appium/appium-mcp), [AI-Powered Testing Automation with Appium MCP](https://medium.com/arconsis/ai-powered-testing-automation-with-appium-mcp-0e6135cfe069), [Appium MCP Explained: AI-Driven Mobile Testing](https://www.getpanto.ai/blog/appium-mcp-for-mobile-app-qa-testing) |

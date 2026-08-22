@@ -69,11 +69,12 @@ shot --> done
 
 **Điều kiện tiên quyết:**
 - AI đang bật cho app (BR-209).
-- QC có page source của màn hình đích (lấy qua Appium Inspector hoặc nền tảng).
+- App đã cài và có một phiên thiết bị sống để AI tự lái khám phá (BR-211).
+- Dữ liệu test của app có sẵn để AI đi qua các bước cần dữ liệu, ví dụ đăng nhập (BR-211).
 
 **Luồng chính:**
-1. QC mô tả trường hợp cần kiểm thử bằng lời và cung cấp page source của màn hình đích (BR-211).
-2. Nền tảng gọi AI CLI sinh test case: phần mô tả hành vi + phần cài đặt, locator vào Page Object, ưu tiên tái dùng câu và phần cài đặt đã có (BR-212).
+1. QC mô tả trường hợp cần kiểm thử bằng lời (BR-211).
+2. Nền tảng gọi AI CLI sinh test case: AI viết phần mô tả hành vi từ mô tả, tự lái phiên thiết bị đi theo kịch bản và inspect từng màn để lấy locator, rồi viết phần cài đặt với locator vào Page Object; ưu tiên tái dùng câu và phần cài đặt đã có (BR-211, BR-212).
 3. QC đọc phần mô tả hành vi của test case (BR-214).
 4. QC chạy thử test case trên thiết bị.
 5. QC đối chiếu nhật ký thực thi với điều mình đã mô tả.
@@ -87,14 +88,15 @@ shot --> done
 **Luồng ngoại lệ:**
 - E1. AI tắt cho app: không sinh được test case qua AI; QC soạn tay như Phase 1 (BR-218).
 - E2. AI CLI không phản hồi hoặc lỗi: không sinh được lần này; QC thử lại hoặc soạn tay.
+- E3. AI khám phá không đi hết được kịch bản (kẹt màn hoặc không tìm ra đường đi): không sinh được lần này; QC chỉnh mô tả và sinh lại, hoặc soạn tay như Phase 1.
 
 **Flowchart:**
 ```mermaid
 flowchart TD
 start([QC cần một test case mới]) --> aion{AI bật cho app?}
 aion -->|Không| manual[Soạn tay như Phase 1]
-aion -->|Có| desc[Mô tả bằng lời + cung cấp page source]
-desc --> gen[AI CLI sinh test case: mô tả hành vi + cài đặt + locator]
+aion -->|Có| desc[Mô tả bằng lời]
+desc --> gen[AI CLI sinh test case: viết mô tả hành vi + tự lái thiết bị khám phá lấy locator + viết cài đặt]
 gen --> read[QC đọc phần mô tả hành vi]
 read --> run[QC chạy thử trên thiết bị]
 run --> match{Nhật ký khớp điều mô tả và đạt?}

@@ -79,13 +79,14 @@ Từ vựng trung tâm ở `brd.md` §1.1. Quy tắc nghiệp vụ ở `business
 
 ---
 
-## US-206: Sinh test case từ mô tả và page source
+## US-206: Sinh test case từ mô tả
 **As a** QC
-**I want to** mô tả trường hợp cần kiểm thử bằng lời và để AI sinh test case từ mô tả đó cùng page source màn hình đích
-**So that** thời gian soạn một test case mới giảm
+**I want to** mô tả trường hợp cần kiểm thử bằng lời và để AI tự khám phá app rồi sinh test case từ mô tả đó
+**So that** thời gian soạn một test case mới giảm, và tôi không phải dump page source tay
 
 **Acceptance Criteria:**
-- [ ] Khi AI bật cho app, QC cung cấp mô tả bằng lời + page source, nền tảng gọi AI CLI sinh test case.
+- [ ] Khi AI bật cho app, QC chỉ cần cung cấp mô tả bằng lời; nền tảng gọi AI CLI sinh test case.
+- [ ] AI tự lái một phiên thiết bị sống đi theo kịch bản và inspect từng màn để lấy locator; QC không cung cấp page source.
 - [ ] Kết quả sinh gồm phần mô tả hành vi bằng ngôn ngữ tự nhiên và phần cài đặt; locator đặt trong Page Object.
 - [ ] Việc sinh ưu tiên tái dùng câu mô tả hành vi và phần cài đặt đã có, không tạo câu trùng nghĩa mới.
 - [ ] Khi AI tắt cho app, không sinh qua AI; QC soạn tay như Phase 1.
